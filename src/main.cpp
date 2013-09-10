@@ -223,7 +223,7 @@ void runCuda(){
 		std::cout << key << std::endl;
 		switch (key) 
 		{
-		   case(27):
+		   case(27)://ESC Key
 			   exit(1);
 			   break;
 		}
