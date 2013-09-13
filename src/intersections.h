@@ -11,6 +11,7 @@
 #include "glm/glm.hpp"
 #include "utilities.h"
 #include <thrust/random.h>
+#include <limits.h>
 
 //Some forward declarations
 __host__ __device__ glm::vec3 getPointOnRay(ray r, float t);
@@ -71,8 +72,87 @@ __host__ __device__ glm::vec3 getSignOfRay(ray r){
 //TODO: IMPLEMENT THIS FUNCTION
 //Cube intersection test, return -1 if no intersection, otherwise, distance to intersection
 __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& intersectionPoint, glm::vec3& normal){
+	//Half of unit box width. We'll transform world so the cube is axis aligned unit cube, centered at origin
+	float halfwidth = 0.5;
 
-    return -1;
+	//transform ray to trivial case
+	glm::vec3 ro = multiplyMV(box.inverseTransform, glm::vec4(r.origin,1.0f));
+	//Don't forget to normalize direction
+	glm::vec3 rd = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(r.direction,0.0f)));
+
+
+	//To avoid edge cases with divide by zeroes, precompute inverse. This will handle the +0, -0 cases gracefully
+	glm::vec3 rdinv = rd;
+	rdinv.x = 1/rdinv.x;
+	rdinv.y = 1/rdinv.y;
+	rdinv.z = 1/rdinv.z;
+	float temp; //for swaps
+
+	//find X crossover t values
+	float t0x = (-halfwidth - ro.x)*rdinv.x;
+	float t1x = ( halfwidth - ro.x)*rdinv.x;
+	if(t0x > t1x) SWAP(t0x,t1x, temp); //Swap so that t0x is always the smaller number. Makes tests easier to write
+	//Initalize bounding parameters
+	float tmin = t0x;
+	float tmax = t1x;
+
+	//find Y crossover t values
+	float t0y = (-halfwidth - ro.y)*rdinv.y;
+	float t1y = ( halfwidth - ro.y)*rdinv.y;
+	if(t0y > t1y) SWAP(t0y,t1y, temp); //Swap so that t0y is always the smaller number. Makes tests easier to write
+	
+	//Check if we missed
+	if(tmin > t1y || tmax < t0y) return -1; //MISSED BOX
+	
+	//Expand bounds where needed
+	tmin = min(tmin,t0y);
+	tmax = max(tmax, t1y);
+	
+	//find Z crossover t values
+	float t0z = (-halfwidth - ro.z)*rdinv.z;
+	float t1z = ( halfwidth - ro.z)*rdinv.z;
+	if(t0z > t1z) SWAP(t0z,t1z, temp); //Swap so that t0z is always the smaller number. Makes tests easier to write
+
+	//check if we missed for the last time
+	if(tmin > t1z || tmax < t0z) return -1;//MISSED
+
+	//IT'S A HIT!!!
+	//figure out where it hit 
+	float t = 3.40282e+038;
+
+	if(t0x > 0){
+		//
+		t = t0x;
+		normal = glm::vec3(-1, 0, 0);
+	}
+	else if(t1x > 0){
+		t = t1x;
+		normal = glm::vec3(1, 0, 0);
+	}
+		
+	if(t0y > 0 && t0y < t){
+		t = t0y;
+		normal = glm::vec3(0, -1, 0);
+	}
+	else if(t1y > 0 && t1y < t){
+		t = t1y;
+		normal = glm::vec3(0, 1, 0);
+	}
+		
+	if(t0z > 0 && t0z < t){
+		t = t0z;
+		normal = glm::vec3(0, 0, -1);
+	}
+	else if(t1z > 0 && t1z < t){
+		t = t1z;
+		normal = glm::vec3(0, 0, 1);
+	}
+	//t now has the correct distance to target. Find the point and normal
+	ray rt; rt.origin = ro; rt.direction = rd;
+	intersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(rt, t), 1.0));
+	normal = glm::normalize(multiplyMV(box.transform, glm::vec4(normal, 0.0f)));
+
+    return t;
 }
 
 //LOOK: Here's an intersection test example from a sphere. Now you just need to figure out cube and, optionally, triangle.

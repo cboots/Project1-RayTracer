@@ -103,10 +103,9 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
   int y = (blockIdx.y * blockDim.y) + threadIdx.y;
   int index = x + (y * resolution.x);
 
-  if((x<=resolution.x && y<=resolution.y)){
-
+  if((x<=resolution.x && y<=resolution.y)){  
     colors[index] = generateRandomNumberFromThread(resolution, time, x, y);
-   }
+  }
 }
 
 //TODO: FINISH THIS FUNCTION
