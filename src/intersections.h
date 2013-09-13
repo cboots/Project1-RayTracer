@@ -77,10 +77,9 @@ __host__ __device__ float geomIntersectionTest(staticGeom geom, ray r, glm::vec3
 	{
 	case SPHERE:
 		return sphereIntersectionTest(geom, r, intersectionPoint, normal); 
-		break;
 	case CUBE:
-		return boxIntersectionTest(geom, r, intersectionPoint, normal); 
-		break;
+		//return boxIntersectionTest(geom, r, intersectionPoint, normal); 
+		return -1;
 	}
 
 	return -1;

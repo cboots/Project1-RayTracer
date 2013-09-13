@@ -46,23 +46,34 @@ __host__ __device__ int firstIntersect(staticGeom* geoms, int numberOfGeoms, ray
 {
 	//Index of the first hit geometry
 	int firstGeomInd = -1;
-	float minDist = -1;
-	//Best intersection points stored in output params implicitly.
+	distance = -1;
+	//Best intersection points stored in output params as minimums encountered. Limits temporary variables..
 
 	//for each geometry object
 	//TODO create better scene graph to improve collision detection for more complicated scenes. (Octtree)
 	for(int i = 0; i < numberOfGeoms; ++i)
 	{
+		//Temporary return variables
+		glm::vec3 intersectionPointTemp;
+		glm::vec3 normalTemp;
+
 		//Test for collision
-		float dist = geomIntersectionTest(geoms[i], r, intersectionPoint, normal);
+		float dist = geomIntersectionTest(geoms[i], r, intersectionPointTemp, normalTemp);
 		if(dist > 0.0)
 		{
 			//Impact detected
-
+			if(distance < 0 || dist < distance)
+			{
+				//First hit or closer hit
+				distance = dist;
+				firstGeomInd = i;
+				intersectionPoint = intersectionPointTemp;
+				normal = normalTemp;
+			}
 		}
 	}
 
-	return -1;
+	return firstGeomInd;
 }
 
 
@@ -75,8 +86,8 @@ __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time
   glm::vec3 right = glm::cross(view, up);
 
   //float d = 1.0f; use a viewing plane of 1 distance 
-  glm::vec3 pixel_location = /* d* */(view + (2*x/resolution.x-1)*right*glm::tan(fov.x) 
-											 - (2*y/resolution.y-1)*up*glm::tan(fov.y));
+  glm::vec3 pixel_location = /* d* */(view + (2*x/resolution.x-1)*right*glm::tan(glm::radians(fov.x)) 
+											 - (2*y/resolution.y-1)*up*glm::tan(glm::radians(fov.y)));
   
   r.direction = glm::normalize(pixel_location);
 
@@ -144,17 +155,21 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 
 	  //Simple code for visualizing view direction
 	  //colors[index] = glm::abs(primeRay.direction);
-	  int min = MIN_POSITIVE(x-200,y-200);
-	  if(min == -1)
-		  colors[index] = glm::vec3(1,0,0);
-	  else if(min == x-200)
-		  colors[index] = glm::vec3(0,1,0);
-	  else if(min == y-200)
-		  colors[index] = glm::vec3(0,0,1);
-	  else
-		  colors[index] = glm::vec3(0,0,0);
+	  
 	  //Simple code for visualizing impact distance
+	  float dist;
+	  glm::vec3 intersectionPoint;
+	  glm::vec3 normal;
 
+	  int ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
+	  if(ind < 0)
+	  {
+		  //Hit nothing, draw black
+		  colors[index] = glm::vec3(0,0,0);
+	  }else
+	  {
+		  colors[index] = glm::vec3(1,1,1)*(1-dist/100);//Shade by distance
+	  }
   }
 }
 
