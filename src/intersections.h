@@ -260,7 +260,7 @@ __host__ __device__ glm::vec3 getRandomPointOnSphere(staticGeom sphere, float ra
     thrust::uniform_real_distribution<float> u11(-1,1);
     thrust::uniform_real_distribution<float> th02pi(0,2*PI);
 
-	float u = 2*PI*u11(rng);
+	float u = u11(rng);
 	float th = th02pi(rng);
 	
 	glm::vec3 point;
