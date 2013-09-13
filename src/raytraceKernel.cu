@@ -41,6 +41,31 @@ __host__ __device__ glm::vec3 generateRandomNumberFromThread(glm::vec2 resolutio
   return glm::vec3((float) u01(rng), (float) u01(rng), (float) u01(rng));
 }
 
+//Function that traverses scene searching for collisions. Traces ray to first impact. Returns index of first geometry hit or -1 if no collision
+__host__ __device__ int firstIntersect(staticGeom* geoms, int numberOfGeoms, ray r, glm::vec3& intersectionPoint, glm::vec3& normal, float& distance)
+{
+	//Index of the first hit geometry
+	int firstGeomInd = -1;
+	float minDist = -1;
+	//Best intersection points stored in output params implicitly.
+
+	//for each geometry object
+	//TODO create better scene graph to improve collision detection for more complicated scenes. (Octtree)
+	for(int i = 0; i < numberOfGeoms; ++i)
+	{
+		//Test for collision
+		float dist = geomIntersectionTest(geoms[i], r, intersectionPoint, normal);
+		if(dist > 0.0)
+		{
+			//Impact detected
+
+		}
+	}
+
+	return -1;
+}
+
+
 //TODO: verify raycastFromCameraKernel FUNCTION
 //Function that does the initial raycast from the camera
 __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time, int x, int y, glm::vec3 eye, 
@@ -118,7 +143,18 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 	  ray primeRay = raycastFromCameraKernel(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
 
 	  //Simple code for visualizing view direction
-	  colors[index] = glm::abs(primeRay.direction);
+	  //colors[index] = glm::abs(primeRay.direction);
+	  int min = MIN_POSITIVE(x-200,y-200);
+	  if(min == -1)
+		  colors[index] = glm::vec3(1,0,0);
+	  else if(min == x-200)
+		  colors[index] = glm::vec3(0,1,0);
+	  else if(min == y-200)
+		  colors[index] = glm::vec3(0,0,1);
+	  else
+		  colors[index] = glm::vec3(0,0,0);
+	  //Simple code for visualizing impact distance
+
   }
 }
 

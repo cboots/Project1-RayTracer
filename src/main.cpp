@@ -28,6 +28,7 @@ int main(int argc, char** argv){
   targetFrame = 0;
   singleFrameMode = false;
 
+
   // Load scene file
   for(int i=1; i<argc; i++){
     string header; string data;

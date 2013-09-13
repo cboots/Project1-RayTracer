@@ -28,6 +28,9 @@
 #define MAX(a,b)	((a>b)?a:b)
 #define SWAP(x,y,t)    {t=x;x=y;y=t;}
 
+#define MIN_POSITIVE(a,b) ((a >= 0)  ?  ((b >= 0)?((a < b)?a:b):a)  : ((b >= 0)?b:-1))
+
+
 
 
 namespace utilityCore {

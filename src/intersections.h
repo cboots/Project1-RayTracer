@@ -18,8 +18,9 @@ __host__ __device__ glm::vec3 getPointOnRay(ray r, float t);
 __host__ __device__ glm::vec3 multiplyMV(cudaMat4 m, glm::vec4 v);
 __host__ __device__ glm::vec3 getSignOfRay(ray r);
 __host__ __device__ glm::vec3 getInverseDirectionOfRay(ray r);
-__host__ __device__ float boxIntersectionTest(staticGeom sphere, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
+__host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
 __host__ __device__ float sphereIntersectionTest(staticGeom sphere, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
+__host__ __device__ float geomIntersectionTest(staticGeom geom, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
 __host__ __device__ glm::vec3 getRandomPointOnCube(staticGeom cube, float randomSeed);
 
 //Handy dandy little hashing function that provides seeds for random number generation
@@ -67,6 +68,22 @@ __host__ __device__ glm::vec3 getInverseDirectionOfRay(ray r){
 __host__ __device__ glm::vec3 getSignOfRay(ray r){
   glm::vec3 inv_direction = getInverseDirectionOfRay(r);
   return glm::vec3((int)(inv_direction.x < 0), (int)(inv_direction.y < 0), (int)(inv_direction.z < 0));
+}
+
+//Generic intersection wrapper that dispatches the correct test based on the geometry type
+__host__ __device__ float geomIntersectionTest(staticGeom geom, ray r, glm::vec3& intersectionPoint, glm::vec3& normal)
+{
+	switch(geom.type)
+	{
+	case SPHERE:
+		return sphereIntersectionTest(geom, r, intersectionPoint, normal); 
+		break;
+	case CUBE:
+		return boxIntersectionTest(geom, r, intersectionPoint, normal); 
+		break;
+	}
+
+	return -1;
 }
 
 //TODO: Verify THIS FUNCTION
