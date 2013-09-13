@@ -50,10 +50,10 @@ __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time
   glm::vec3 right = glm::cross(view, up);
 
   //float d = 1.0f; use a viewing plane of 1 distance 
-  glm::vec3 pixel_location = eye + /* d* */(view + (2*x/resolution.x-1)*right*glm::tan(fov.x) 
+  glm::vec3 pixel_location = /* d* */(view + (2*x/resolution.x-1)*right*glm::tan(fov.x) 
 											 - (2*y/resolution.y-1)*up*glm::tan(fov.y));
   
-  r.direction = glm::normalize(pixel_location-r.origin);
+  r.direction = glm::normalize(pixel_location);
 
   return r;
 }
