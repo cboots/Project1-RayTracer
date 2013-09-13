@@ -92,7 +92,7 @@ __host__ __device__ glm::vec3 calculateRandomDirectionInHemisphere(glm::vec3 nor
 __host__ __device__ glm::vec3 getRandomDirectionInSphere(float xi1, float xi2) {
 
 	float u = 2*(xi1-0.5);
-	float th = 2*PI*xi1;
+	float th = 2*PI*xi2;
 	
 	glm::vec3 point;
 	float root = glm::sqrt(1-u*u);
