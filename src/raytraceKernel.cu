@@ -41,12 +41,20 @@ __host__ __device__ glm::vec3 generateRandomNumberFromThread(glm::vec2 resolutio
   return glm::vec3((float) u01(rng), (float) u01(rng), (float) u01(rng));
 }
 
-//TODO: IMPLEMENT THIS FUNCTION
+//TODO: verify raycastFromCameraKernel FUNCTION
 //Function that does the initial raycast from the camera
-__host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time, int x, int y, glm::vec3 eye, glm::vec3 view, glm::vec3 up, glm::vec2 fov){
+__host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time, int x, int y, glm::vec3 eye, 
+												glm::vec3 view, glm::vec3 up, glm::vec2 fov){
   ray r;
-  r.origin = glm::vec3(0,0,0);
-  r.direction = glm::vec3(0,0,-1);
+  r.origin = eye;
+  glm::vec3 right = glm::cross(view, up);
+
+  //float d = 1.0f; use a viewing plane of 1 distance 
+  glm::vec3 pixel_location = eye + /* d* */(view + (2*x/resolution.x-1)*right*glm::tan(fov.x) 
+											 - (2*y/resolution.y-1)*up*glm::tan(fov.y));
+  
+  r.direction = glm::normalize(pixel_location-r.origin);
+
   return r;
 }
 
@@ -94,7 +102,7 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
   }
 }
 
-//TODO: IMPLEMENT THIS FUNCTION
+//TODO: IMPLEMENT raytraceRay Kernel FUNCTION
 //Core raytracer kernel
 __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, int rayDepth, glm::vec3* colors,
                             staticGeom* geoms, int numberOfGeoms){
@@ -102,13 +110,13 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
   int x = (blockIdx.x * blockDim.x) + threadIdx.x;
   int y = (blockIdx.y * blockDim.y) + threadIdx.y;
   int index = x + (y * resolution.x);
-
+  
   if((x<=resolution.x && y<=resolution.y)){  
     colors[index] = generateRandomNumberFromThread(resolution, time, x, y);
   }
 }
 
-//TODO: FINISH THIS FUNCTION
+//TODO: FINISH Kernel Wrapper FUNCTION
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
 void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
   
