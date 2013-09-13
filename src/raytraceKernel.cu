@@ -112,7 +112,13 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
   int index = x + (y * resolution.x);
   
   if((x<=resolution.x && y<=resolution.y)){  
-    colors[index] = generateRandomNumberFromThread(resolution, time, x, y);
+	//Valid pixel, away we go!
+
+	  //First we must have a ray
+	  ray primeRay = raycastFromCameraKernel(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
+
+	  //Simple code for visualizing view direction
+	  colors[index] = glm::abs(primeRay.direction);
   }
 }
 
