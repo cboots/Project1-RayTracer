@@ -168,7 +168,8 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 		  colors[index] = glm::vec3(0,0,0);
 	  }else
 	  {
-		  colors[index] = glm::vec3(1,1,1)*(1-dist/100);//Shade by distance
+		  colors[index] = glm::abs(normal);
+			
 	  }
   }
 }
@@ -214,6 +215,14 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cam.view = renderCam->views[frame];
   cam.up = renderCam->ups[frame];
   cam.fov = renderCam->fov;
+
+  
+  ray r;
+  r.origin = glm::vec3(0,0,10);
+  r.direction = glm::vec3(0,0,-1);
+  glm::vec3 intersectionPoint;
+  glm::vec3 normal;
+  float result =boxIntersectionTest(geomList[0], r, intersectionPoint, normal);
 
   //kernel launches
   raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms);

@@ -78,8 +78,8 @@ __host__ __device__ float geomIntersectionTest(staticGeom geom, ray r, glm::vec3
 	case SPHERE:
 		return sphereIntersectionTest(geom, r, intersectionPoint, normal); 
 	case CUBE:
-		//return boxIntersectionTest(geom, r, intersectionPoint, normal); 
-		return -1;
+		return boxIntersectionTest(geom, r, intersectionPoint, normal); 
+		//return -1;
 	}
 
 	return -1;
@@ -89,7 +89,7 @@ __host__ __device__ float geomIntersectionTest(staticGeom geom, ray r, glm::vec3
 //Cube intersection test, return -1 if no intersection, otherwise, distance to intersection
 __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& intersectionPoint, glm::vec3& normal){
 	//Half of unit box width. We'll transform world so the cube is axis aligned unit cube, centered at origin
-	float halfwidth = 0.5;
+	const float halfwidth = 0.5;
 
 	//transform ray to trivial case
 	glm::vec3 ro = multiplyMV(box.inverseTransform, glm::vec4(r.origin,1.0f));
@@ -97,78 +97,106 @@ __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& 
 	glm::vec3 rd = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(r.direction,0.0f)));
 
 
-	//To avoid edge cases with divide by zeroes, precompute inverse. This will handle the +0, -0 cases gracefully
-	glm::vec3 rdinv = rd;
-	rdinv.x = 1/rdinv.x;
-	rdinv.y = 1/rdinv.y;
-	rdinv.z = 1/rdinv.z;
-	float temp; //for swaps
-
 	//find X crossover t values
-	float t0x = (-halfwidth - ro.x)*rdinv.x;
-	float t1x = ( halfwidth - ro.x)*rdinv.x;
-	if(t0x > t1x) SWAP(t0x,t1x, temp); //Swap so that t0x is always the smaller number. Makes tests easier to write
-	//Initalize bounding parameters
-	float tmin = t0x;
-	float tmax = t1x;
+	//if close to 0, ray is parallel to X Planes. Only check planes if this test fails
+	float txmin = -1;
+	if(!epsilonCheck(0.0f, rd.x)) {
+		float t0x = (-halfwidth - ro.x)/rd.x;
+		float t1x = ( halfwidth - ro.x)/rd.x;
+		txmin = MIN_POSITIVE(t0x,t1x);//Smallest positive value or -1 if both negative
+		if(txmin < 0)
+		{
+			//Ray is cast past both planes. Since axis aligned, no way this could hit.
+			return -1;
+		}
+	}
 
 	//find Y crossover t values
-	float t0y = (-halfwidth - ro.y)*rdinv.y;
-	float t1y = ( halfwidth - ro.y)*rdinv.y;
-	if(t0y > t1y) SWAP(t0y,t1y, temp); //Swap so that t0y is always the smaller number. Makes tests easier to write
-	
-	//Check if we missed
-	if(tmin > t1y || tmax < t0y) return -1; //MISSED BOX
-	
-	//Expand bounds where needed
-	tmin = min(tmin,t0y);
-	tmax = max(tmax, t1y);
+	//if close to 0, ray is parallel to Y Planes. Only check planes if this test fails
+	float tymin = -1;
+	if(!epsilonCheck(0.0f, rd.y)) {
+		float t0y = (-halfwidth - ro.y)/rd.y;
+		float t1y = ( halfwidth - ro.y)/rd.y;
+		tymin = MIN_POSITIVE(t0y,t1y);
+		if(tymin < 0)
+		{
+			//Ray is cast past both planes. Since axis aligned, no way this could hit.
+			return -1;
+		}
+	}
+
 	
 	//find Z crossover t values
-	float t0z = (-halfwidth - ro.z)*rdinv.z;
-	float t1z = ( halfwidth - ro.z)*rdinv.z;
-	if(t0z > t1z) SWAP(t0z,t1z, temp); //Swap so that t0z is always the smaller number. Makes tests easier to write
+	//if close to 0, ray is parallel to Z Planes. Only check planes if this test fails
+	float tzmin = -1;
+	if(!epsilonCheck(0.0f, rd.z)) {
+		float t0z = (-halfwidth - ro.z)/rd.z;
+		float t1z = ( halfwidth - ro.z)/rd.z;
+		tzmin = MIN_POSITIVE(t0z,t1z);
+		if(tzmin < 0)
+		{
+			//Ray is cast past both planes. Since axis aligned, no way this could hit.
+			return -1;
+		}
+	}
 
-	//check if we missed for the last time
-	if(tmin > t1z || tmax < t0z) return -1;//MISSED
 
-	//IT'S A HIT!!!
-	//figure out where it hit 
-	float t = 3.40282e+038;
+	//We've found the closest 3 planes in the path of the ray. If we got this far, there must at least one. Go through each until finding the closest hit
+	float t = -1;
+	glm::vec3 test;
+	if(txmin >= 0)
+	{
+		test = glm::abs(ro + rd*txmin);//find point on the box. Abs value simplifies test
+		if(test.y <= halfwidth && test.z <= halfwidth)
+		{
+			//Plane hits inside the bounds
+			if(MIN_POSITIVE(t,txmin) == txmin){
+				//Plane is closest we've found so far
+				t = MIN_POSITIVE(t, txmin);
+				normal = glm::vec3(-1*SIGN(rd.x),0,0);
+			}
+		}
+	}
+	
+	if(tymin >= 0)
+	{
+		test = glm::abs(ro + rd*tymin);//find point on the box. Abs value simplifies test
+		if(test.x <= halfwidth && test.z <= halfwidth)
+		{
+			//Plane hits inside the bounds
+			if(MIN_POSITIVE(t,tymin) == tymin){
+				//Plane is closest we've found so far
+				t = MIN_POSITIVE(t, tymin);
+				normal = glm::vec3(0,-1*SIGN(rd.y),0);
+			}
+		}
+	}
 
-	if(t0x > 0){
-		//
-		t = t0x;
-		normal = glm::vec3(-1, 0, 0);
+	
+	if(tzmin >= 0)
+	{
+		test = glm::abs(ro + rd*tzmin);//find point on the box. Abs value simplifies test
+		if(test.x <= halfwidth && test.y <= halfwidth)
+		{
+			//Plane hits inside the bounds
+			if(MIN_POSITIVE(t,tzmin) == tzmin){
+				//Plane is closest we've found so far
+				t = MIN_POSITIVE(t, tzmin);
+				normal = glm::vec3(0,0,-1*SIGN(rd.z));
+			}
+		}
 	}
-	else if(t1x > 0){
-		t = t1x;
-		normal = glm::vec3(1, 0, 0);
-	}
-		
-	if(t0y > 0 && t0y < t){
-		t = t0y;
-		normal = glm::vec3(0, -1, 0);
-	}
-	else if(t1y > 0 && t1y < t){
-		t = t1y;
-		normal = glm::vec3(0, 1, 0);
-	}
-		
-	if(t0z > 0 && t0z < t){
-		t = t0z;
-		normal = glm::vec3(0, 0, -1);
-	}
-	else if(t1z > 0 && t1z < t){
-		t = t1z;
-		normal = glm::vec3(0, 0, 1);
-	}
+
+	//if no planes met the criteria, return -1
+	if(t < 0)
+		return -1;
+
 	//t now has the correct distance to target. Find the point and normal
 	ray rt; rt.origin = ro; rt.direction = rd;
 	intersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(rt, t), 1.0));
 	normal = glm::normalize(multiplyMV(box.transform, glm::vec4(normal, 0.0f)));
 
-    return t;
+	return glm::length(r.origin - intersectionPoint);
 }
 
 //LOOK: Here's an intersection test example from a sphere. Now you just need to figure out cube and, optionally, triangle.
