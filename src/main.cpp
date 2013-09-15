@@ -53,6 +53,12 @@ int main(int argc, char** argv){
   width = renderCam->resolution[0];
   height = renderCam->resolution[1];
 
+  // Set up rendering options
+  renderOpts = new renderOptions();
+  renderOpts->mode = NORMAL_DEBUG;
+  renderOpts->traceDepth = 1;
+  renderOpts->distanceShadeRange = 20.0f;
+
   if(targetFrame>=renderCam->frames){
     cout << "Warning: Specified target frame is out of range, defaulting to frame 0." << endl;
     targetFrame = 0;
@@ -121,9 +127,15 @@ void runCuda(){
       materials[i] = renderScene->materials[i];
     }
     
-  
+	
+	//Setup rendering options. TODO Make this runtime configurable with keyboard commands
+	renderOptions rconfig;
+	rconfig.mode = NORMAL_DEBUG;
+	rconfig.traceDepth = 1; //determines how many bounces the raytracer traces
+
+
     // execute the kernel
-    cudaRaytraceCore(dptr, renderCam, targetFrame, iterations, materials, renderScene->materials.size(), geoms, renderScene->objects.size() );
+    cudaRaytraceCore(dptr, renderCam, renderOpts, targetFrame, iterations, materials, renderScene->materials.size(), geoms, renderScene->objects.size() );
     
     // unmap buffer object
     cudaGLUnmapBufferObject(pbo);

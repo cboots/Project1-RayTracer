@@ -12,6 +12,7 @@
 #include <string>
 
 enum GEOMTYPE{ SPHERE, CUBE, MESH };
+enum RENDERMODE{NORMAL_DEBUG, DISTANCE_DEBUG, RAYTRACE};
 
 struct ray {
 	glm::vec3 origin;
@@ -71,6 +72,12 @@ struct material{
 	glm::vec3 absorptionCoefficient;
 	float reducedScatterCoefficient;
 	float emittance;
+};
+
+struct renderOptions{
+	enum RENDERMODE mode;
+	float distanceShadeRange;
+	int traceDepth;
 };
 
 #endif //CUDASTRUCTS_H

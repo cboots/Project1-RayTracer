@@ -29,6 +29,7 @@ public:
     vector<geom> objects;
     vector<material> materials;
     camera renderCam;
+
 };
 
 #endif
