@@ -53,9 +53,9 @@ int main(int argc, char** argv){
   width = renderCam->resolution[0];
   height = renderCam->resolution[1];
 
-  // Set up rendering options
+  //TODO Set up rendering options
   renderOpts = new renderOptions();
-  renderOpts->mode = NORMAL_DEBUG;
+  renderOpts->mode = DISTANCE_DEBUG;
   renderOpts->traceDepth = 1;
   renderOpts->distanceShadeRange = 20.0f;
 
@@ -128,11 +128,6 @@ void runCuda(){
     }
     
 	
-	//Setup rendering options. TODO Make this runtime configurable with keyboard commands
-	renderOptions rconfig;
-	rconfig.mode = NORMAL_DEBUG;
-	rconfig.traceDepth = 1; //determines how many bounces the raytracer traces
-
 
     // execute the kernel
     cudaRaytraceCore(dptr, renderCam, renderOpts, targetFrame, iterations, materials, renderScene->materials.size(), geoms, renderScene->objects.size() );
@@ -238,7 +233,20 @@ void runCuda(){
 		   case(27)://ESC Key
 			   exit(1);
 			   break;
+		   case('1'):
+			   //Enter normal debug mode
+			   renderOpts->mode = RAYTRACE;
+			   break;
+		   case('2'):
+			   //Enter normal debug mode
+			   renderOpts->mode = DISTANCE_DEBUG;
+			   break;
+		   case('3'):
+			   //Enter normal debug mode
+			   renderOpts->mode = NORMAL_DEBUG;
+			   break;
 		}
+		   //TODO Add more keyboard controls here
 	}
 
 #endif

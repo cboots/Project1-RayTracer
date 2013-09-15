@@ -12,7 +12,7 @@
 #include <string>
 
 enum GEOMTYPE{ SPHERE, CUBE, MESH };
-enum RENDERMODE{NORMAL_DEBUG, DISTANCE_DEBUG, RAYTRACE};
+enum RENDERMODE{RAYTRACE, NORMAL_DEBUG, DISTANCE_DEBUG};
 
 struct ray {
 	glm::vec3 origin;

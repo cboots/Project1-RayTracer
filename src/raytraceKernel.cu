@@ -173,6 +173,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 				break;
 			case RAYTRACE:
 				//TODO Implement actual raytracer here
+				colors[index] = glm::vec3(0,0,0);
 				break;
 			}
 		}
