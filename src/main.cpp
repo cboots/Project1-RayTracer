@@ -53,7 +53,7 @@ int main(int argc, char** argv){
   width = renderCam->resolution[0];
   height = renderCam->resolution[1];
 
-  //TODO Set up rendering options
+  //TODO: Set up rendering options
   renderOpts = new renderOptions();
   renderOpts->mode = DISTANCE_DEBUG;
   renderOpts->traceDepth = 1;
@@ -246,7 +246,9 @@ void runCuda(){
 			   renderOpts->mode = NORMAL_DEBUG;
 			   break;
 		}
-		   //TODO Add more keyboard controls here
+	    //TODO: Add more keyboard controls here
+
+
 	}
 
 #endif

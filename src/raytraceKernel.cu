@@ -80,18 +80,19 @@ __host__ __device__ int firstIntersect(staticGeom* geoms, int numberOfGeoms, ray
 //TODO: verify raycastFromCameraKernel FUNCTION
 //Function that does the initial raycast from the camera
 __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time, int x, int y, glm::vec3 eye, 
-												glm::vec3 view, glm::vec3 up, glm::vec2 fov){
-													ray r;
-													r.origin = eye;
-													glm::vec3 right = glm::cross(view, up);
+												glm::vec3 view, glm::vec3 up, glm::vec2 fov)
+{
+	ray r;
+	r.origin = eye;
+	glm::vec3 right = glm::cross(view, up);
 
-													//float d = 1.0f; use a viewing plane of 1 distance 
-													glm::vec3 pixel_location = /* d* */(view + (2*x/resolution.x-1)*right*glm::tan(glm::radians(fov.x)) 
-														- (2*y/resolution.y-1)*up*glm::tan(glm::radians(fov.y)));
+	//float d = 1.0f; use a viewing plane of 1 distance 
+	glm::vec3 pixel_location = /* d* */(view + (2*x/resolution.x-1)*right*glm::tan(glm::radians(fov.x)) 
+		- (2*y/resolution.y-1)*up*glm::tan(glm::radians(fov.y)));
 
-													r.direction = glm::normalize(pixel_location);
+	r.direction = glm::normalize(pixel_location);
 
-													return r;
+	return r;
 }
 
 //Kernel that blacks out a given image buffer
@@ -176,6 +177,9 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 				colors[index] = glm::vec3(0,0,0);
 				break;
 			}
+		}else{
+			//Clear pixels that don't hit anything
+			colors[index] = glm::vec3(0,0,0);
 		}
 	}
 }
