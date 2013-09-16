@@ -48,11 +48,13 @@ using namespace std;
 
 scene* renderScene;
 camera* renderCam;
+camera  camDefaults;
 renderOptions* renderOpts;
 int targetFrame;
 int iterations;
 bool finishedRender;
 bool singleFrameMode;
+
 
 //-------------------------------
 //------------GL STUFF-----------

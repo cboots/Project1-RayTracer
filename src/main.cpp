@@ -53,6 +53,8 @@ int main(int argc, char** argv){
   width = renderCam->resolution[0];
   height = renderCam->resolution[1];
 
+  camDefaults = renderScene->renderCam;//Make a copy that we can reload if we get lost.
+
   //TODO: Set up rendering options
   renderOpts = new renderOptions();
   renderOpts->mode = DISTANCE_DEBUG;
@@ -233,21 +235,29 @@ void runCuda(){
 		   case(27)://ESC Key
 			   exit(1);
 			   break;
-		   case('1'):
+		///Mode selection options
+		   case '1':
 			   //Enter normal debug mode
 			   renderOpts->mode = RAYTRACE;
 			   break;
-		   case('2'):
+		   case '2':
 			   //Enter normal debug mode
 			   renderOpts->mode = DISTANCE_DEBUG;
 			   break;
-		   case('3'):
+		   case '3':
 			   //Enter normal debug mode
 			   renderOpts->mode = NORMAL_DEBUG;
 			   break;
+		   case 'w':
+			   //Look up
+			   break;
+		   case 'r':
+//			   restoreCamDefaults();
+			   break;
+				   
 		}
 	    //TODO: Add more keyboard controls here
-
+		
 
 	}
 

@@ -142,7 +142,7 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
 //TODO: IMPLEMENT raytraceRay Kernel FUNCTION
 //Core raytracer kernel
 __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, renderOptions rconfig, glm::vec3* colors,
-							staticGeom* geoms, int numberOfGeoms, material* cudamats, int numberOfMaterials)
+							staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
 {
 
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -174,7 +174,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 				break;
 			case RAYTRACE:
 				//TODO Implement actual raytracer here
-				colors[index] = glm::vec3(0,0,0);
+				colors[index] = mats[geoms[ind].materialid].color;
 				break;
 			}
 		}else{

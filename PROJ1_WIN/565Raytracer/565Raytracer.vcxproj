@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\src\cameraUtils.h" />
     <ClInclude Include="..\..\src\cudaMat4.h" />
     <ClInclude Include="..\..\src\glslUtility.h" />
     <ClInclude Include="..\..\src\image.h" />
@@ -33,6 +34,7 @@
     <ClInclude Include="..\..\src\utilities.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\cameraUtils.cpp" />
     <ClCompile Include="..\..\src\glslUtility.cpp" />
     <ClCompile Include="..\..\src\image.cpp" />
     <ClCompile Include="..\..\src\main.cpp" />
