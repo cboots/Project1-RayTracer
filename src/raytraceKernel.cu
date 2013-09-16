@@ -76,6 +76,89 @@ __host__ __device__ int firstIntersect(staticGeom* geoms, int numberOfGeoms, ray
 	return firstGeomInd;
 }
 
+__host__ __device__ glm::vec3 reflect(glm::vec3 incident, glm::vec3 normal)
+{
+	return incident-glm::dot(2.0f*normal, incident) * normal;
+}
+
+///Compute the scalar contribution from specular highlights
+__host__ __device__ float calculateSpecularScalar(ray viewRay, ray lightDirection, glm::vec3 normal, float specularExponent)
+{
+	float dot = glm::dot(reflect(-lightDirection.direction, normal), -viewRay.direction);
+	if(dot <= 0.0)
+		return 0.0;
+	else
+		return glm::pow(dot, specularExponent);
+		
+	
+}
+
+///Compute the scalar contribution from diffuse lighting
+__host__ __device__ float calculateDiffuseScalar(glm::vec3 normal, ray lightDirection)
+{
+	return MAX(0,glm::dot(normal, lightDirection.direction));
+}
+
+__host__ __device__ glm::vec3 computeShadowedIntensity(ray primeRay, glm::vec3 intersectionPoint, int hitGeomIndex, glm::vec3 normal, renderOptions rconfig, 
+													   int time,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials, int lightIndex, ray& lightDirection)
+{
+	//TODO: implement shadows
+	material lightMat =  mats[geoms[lightIndex].materialid];
+
+	//For now just return the center of the light source. Treat as a point source
+	lightDirection.origin = intersectionPoint;
+	lightDirection.direction = glm::normalize(geoms[lightIndex].translation - intersectionPoint);
+	return lightMat.color*lightMat.emittance;
+}
+
+//Computes the illumination contributions from each light source at this point.
+//Incorporates ambient, specular, and diffuse reflection as well as shadows.
+//Returns the summed light intensity in rgb components. Perfect reflection and refraction effects are not included.
+__host__ __device__ glm::vec3 calculatePhongIllumination(ray primeRay, glm::vec3 intersectionPoint, int hitGeomIndex, glm::vec3 normal, renderOptions rconfig, 
+														 int time,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
+{
+
+	//Initialize to ambient component.
+	glm::vec3 totalL = rconfig.ka*rconfig.ambientLight*mats[geoms[hitGeomIndex].materialid].color;
+
+	//for each material, if it's a light source add its acumulated 
+	//TODO: precompute which objects are light sources
+	for(int i = 0; i < numberOfGeoms; ++i){
+		if(mats[geoms[i].materialid].emittance > 0)
+		{
+			if(i == hitGeomIndex)
+			{
+				//we hit a light, add in its own component
+			}
+			//Light source, compute contribution
+			ray lightDirection;//An output variable that returns the direction to the center of the effective light source
+			glm::vec3 lightIntensity = computeShadowedIntensity(primeRay, intersectionPoint, hitGeomIndex, normal, rconfig, 
+				time,	geoms, numberOfGeoms, mats, numberOfMaterials, i, lightDirection);
+
+			if(lightIntensity.x > 0 || lightIntensity.y > 0 || lightIntensity.z > 0){
+				//Compute diffuse contribution
+				if(rconfig.kd > 0)
+				{
+
+					//kd is a global tuning parameter that allows control of each lighting element.
+					totalL += rconfig.kd*(lightIntensity*mats[geoms[hitGeomIndex].materialid].color)
+						*calculateDiffuseScalar(normal, lightDirection);
+				}
+
+				//Compute Specular contribution
+				if(rconfig.ks > 0 && mats[geoms[hitGeomIndex].materialid].specularExponent > 0)
+				{
+					totalL += rconfig.ks*(lightIntensity*mats[geoms[hitGeomIndex].materialid].specularColor)
+						*calculateSpecularScalar(primeRay, lightDirection, normal, mats[geoms[hitGeomIndex].materialid].specularExponent);
+					
+				}
+			}
+		}
+	}
+
+	return totalL;
+}
+
 
 //TODO: verify raycastFromCameraKernel FUNCTION
 //Function that does the initial raycast from the camera
@@ -144,7 +227,6 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
 __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, renderOptions rconfig, glm::vec3* colors,
 							staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
 {
-
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int index = x + (y * resolution.x);
@@ -174,7 +256,11 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 				break;
 			case RAYTRACE:
 				//TODO Implement actual raytracer here
-				colors[index] = mats[geoms[ind].materialid].color;
+				//colors[index] = mats[geoms[ind].materialid].color;
+				colors[index] = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, time, 
+					geoms, numberOfGeoms, mats, numberOfMaterials);
+
+
 				break;
 			}
 		}else{

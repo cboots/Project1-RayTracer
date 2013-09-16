@@ -31,8 +31,6 @@
 #define MIN_POSITIVE(a,b) ((a >= 0)  ?  ((b >= 0)?((a < b)?a:b):a)  : ((b >= 0)?b:-1))
 #define SIGN(a) ((a > 0)?1:((a < 0)?-1:0))
 
-
-
 namespace utilityCore {
     extern float clamp(float f, float min, float max);
     extern bool replaceString(std::string& str, const std::string& from, const std::string& to);
@@ -45,6 +43,7 @@ namespace utilityCore {
     extern void printCudaMat4(cudaMat4 m);
     extern std::string convertIntToString(int number);
     extern std::istream& safeGetline(std::istream& is, std::string& t); //Thanks to http://stackoverflow.com/a/6089413
+
 
     //-----------------------------
     //-------GLM Printers----------

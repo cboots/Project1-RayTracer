@@ -57,9 +57,13 @@ int main(int argc, char** argv){
 
   //TODO: Set up rendering options
   renderOpts = new renderOptions();
-  renderOpts->mode = DISTANCE_DEBUG;
+  renderOpts->mode = RAYTRACE;
   renderOpts->traceDepth = 1;
   renderOpts->distanceShadeRange = 20.0f;
+  renderOpts->ka =  0.2f;
+  renderOpts->kd =  0.65f;
+  renderOpts->ks =  0.25f;
+  renderOpts->ambientLight = glm::vec3(1,1,1);
 
   if(targetFrame>=renderCam->frames){
     cout << "Warning: Specified target frame is out of range, defaulting to frame 0." << endl;

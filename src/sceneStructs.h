@@ -78,6 +78,12 @@ struct renderOptions{
 	enum RENDERMODE mode;
 	float distanceShadeRange;
 	int traceDepth;
+
+	//Phong parameters
+	float ka;
+	float kd;
+	float ks;
+	glm::vec3 ambientLight;
 };
 
 #endif //CUDASTRUCTS_H
