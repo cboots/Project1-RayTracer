@@ -60,9 +60,11 @@ int main(int argc, char** argv){
   renderOpts->mode = RAYTRACE;
   renderOpts->traceDepth = 1;
   renderOpts->distanceShadeRange = 20.0f;
-  renderOpts->ka =  0.2f;
-  renderOpts->kd =  0.65f;
-  renderOpts->ks =  0.25f;
+
+  //Note, these constants must sum to 1.
+  renderOpts->ka =  0.01f;
+  renderOpts->kd =  0.70f;
+  renderOpts->ks =  0.24f;
   renderOpts->ambientLight = glm::vec3(1,1,1);
 
   if(targetFrame>=renderCam->frames){

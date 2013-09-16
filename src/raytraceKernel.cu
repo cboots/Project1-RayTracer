@@ -59,7 +59,7 @@ __host__ __device__ int firstIntersect(staticGeom* geoms, int numberOfGeoms, ray
 
 		//Test for collision
 		float dist = geomIntersectionTest(geoms[i], r, intersectionPointTemp, normalTemp);
-		if(dist > 0.0)
+		if(dist > RAY_BIAS_AMOUNT)//Exclude very very near hits. This should help fix floating point errors.
 		{
 			//Impact detected
 			if(distance < 0 || dist < distance)
@@ -89,8 +89,6 @@ __host__ __device__ float calculateSpecularScalar(ray viewRay, ray lightDirectio
 		return 0.0;
 	else
 		return glm::pow(dot, specularExponent);
-		
-	
 }
 
 ///Compute the scalar contribution from diffuse lighting
@@ -108,7 +106,15 @@ __host__ __device__ glm::vec3 computeShadowedIntensity(ray primeRay, glm::vec3 i
 	//For now just return the center of the light source. Treat as a point source
 	lightDirection.origin = intersectionPoint;
 	lightDirection.direction = glm::normalize(geoms[lightIndex].translation - intersectionPoint);
-	return lightMat.color*lightMat.emittance;
+
+	glm::vec3 lightHitPoint;
+	float lightDistance;
+	glm::vec3 normal1;
+	if(lightIndex == firstIntersect(geoms, numberOfGeoms, lightDirection, lightHitPoint, normal1, lightDistance))
+		return lightMat.color*lightMat.emittance;
+	else
+		//Shadow
+		return glm::vec3(0,0,0);
 }
 
 //Computes the illumination contributions from each light source at this point.
@@ -117,7 +123,6 @@ __host__ __device__ glm::vec3 computeShadowedIntensity(ray primeRay, glm::vec3 i
 __host__ __device__ glm::vec3 calculatePhongIllumination(ray primeRay, glm::vec3 intersectionPoint, int hitGeomIndex, glm::vec3 normal, renderOptions rconfig, 
 														 int time,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
 {
-
 	//Initialize to ambient component.
 	glm::vec3 totalL = rconfig.ka*rconfig.ambientLight*mats[geoms[hitGeomIndex].materialid].color;
 
@@ -129,28 +134,29 @@ __host__ __device__ glm::vec3 calculatePhongIllumination(ray primeRay, glm::vec3
 			if(i == hitGeomIndex)
 			{
 				//we hit a light, add in its own component
-			}
-			//Light source, compute contribution
-			ray lightDirection;//An output variable that returns the direction to the center of the effective light source
-			glm::vec3 lightIntensity = computeShadowedIntensity(primeRay, intersectionPoint, hitGeomIndex, normal, rconfig, 
-				time,	geoms, numberOfGeoms, mats, numberOfMaterials, i, lightDirection);
+				totalL += mats[geoms[i].materialid].emittance*mats[geoms[i].materialid].color;
+			}else{
+				//Light source, compute contribution
+				ray lightDirection;//An output variable that returns the direction to the center of the effective light source
+				glm::vec3 lightIntensity = computeShadowedIntensity(primeRay, intersectionPoint, hitGeomIndex, normal, rconfig, 
+					time,	geoms, numberOfGeoms, mats, numberOfMaterials, i, lightDirection);
 
-			if(lightIntensity.x > 0 || lightIntensity.y > 0 || lightIntensity.z > 0){
-				//Compute diffuse contribution
-				if(rconfig.kd > 0)
-				{
+				if(lightIntensity.x > 0 || lightIntensity.y > 0 || lightIntensity.z > 0){
+					//Compute diffuse contribution
+					if(rconfig.kd > 0)
+					{
 
-					//kd is a global tuning parameter that allows control of each lighting element.
-					totalL += rconfig.kd*(lightIntensity*mats[geoms[hitGeomIndex].materialid].color)
-						*calculateDiffuseScalar(normal, lightDirection);
-				}
+						//kd is a global tuning parameter that allows control of each lighting element.
+						totalL += rconfig.kd*(lightIntensity*mats[geoms[hitGeomIndex].materialid].color)
+							*calculateDiffuseScalar(normal, lightDirection);
+					}
 
-				//Compute Specular contribution
-				if(rconfig.ks > 0 && mats[geoms[hitGeomIndex].materialid].specularExponent > 0)
-				{
-					totalL += rconfig.ks*(lightIntensity*mats[geoms[hitGeomIndex].materialid].specularColor)
-						*calculateSpecularScalar(primeRay, lightDirection, normal, mats[geoms[hitGeomIndex].materialid].specularExponent);
-					
+					//Compute Specular contribution (only if non-zero specular exponent, otherwise everything will go bright)
+					if(rconfig.ks > 0 && mats[geoms[hitGeomIndex].materialid].specularExponent > 0)
+					{
+						totalL += rconfig.ks*(lightIntensity*mats[geoms[hitGeomIndex].materialid].specularColor)
+							*calculateSpecularScalar(primeRay, lightDirection, normal, mats[geoms[hitGeomIndex].materialid].specularExponent);
+					}
 				}
 			}
 		}
