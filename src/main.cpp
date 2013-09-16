@@ -72,7 +72,9 @@ int main(int argc, char** argv){
   renderOpts->maxSamplesPerPixel = 25;
   renderOpts->minSamplesPerPixel = 4;
   
-
+  renderOpts->softShadows= false;
+  renderOpts->numShadowRays = 25;
+  
   if(targetFrame>=renderCam->frames){
     cout << "Warning: Specified target frame is out of range, defaulting to frame 0." << endl;
     targetFrame = 0;

@@ -87,6 +87,8 @@ struct renderOptions{
 
 	//Optional rendering settings
 	bool softShadows;
+	int numShadowRays;
+
 	bool antialiasing;
 	int minSamplesPerPixel;
 	int maxSamplesPerPixel;

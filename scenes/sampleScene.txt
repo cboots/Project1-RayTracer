@@ -185,6 +185,6 @@ OBJECT 8
 sphere
 material 7 
 frame 0
-TRANS       0 10 10
+TRANS       0 9 9
 ROTAT       0 0 90
 SCALE       1 1 1
