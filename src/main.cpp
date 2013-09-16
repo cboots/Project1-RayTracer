@@ -63,8 +63,8 @@ int main(int argc, char** argv){
 
   //Note, these constants must sum to 1.
   renderOpts->ka =  0.01f;
-  renderOpts->kd =  0.70f;
-  renderOpts->ks =  0.24f;
+  renderOpts->kd =  0.90f;
+  renderOpts->ks =  0.09f;
   renderOpts->ambientLight = glm::vec3(1,1,1);
 
   if(targetFrame>=renderCam->frames){
