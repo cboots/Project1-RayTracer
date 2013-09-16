@@ -184,6 +184,50 @@ __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time
 	return r;
 }
 
+__host__ __device__ glm::vec3 traceRay(ray primeRay, float time, renderOptions rconfig, 
+							staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
+{
+		glm::vec3 color;
+		//First we must have a primary ray
+		//Calculate impact of primary ray
+		float dist;
+		glm::vec3 intersectionPoint;
+		glm::vec3 normal;
+		int ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
+
+		if(ind >= 0)
+		{
+			//We have something to draw. 
+			switch(rconfig.mode)
+			{
+			case NORMAL_DEBUG:
+				//Debug render. Display normals of very first impacted surface.
+				color = glm::abs(normal);
+				break;
+			case DISTANCE_DEBUG:
+				color = glm::vec3(1,1,1)*(1-dist/rconfig.distanceShadeRange);
+				break;
+			case RAYTRACE:
+				//TODO Implement actual raytracer here
+				//colors[index] = mats[geoms[ind].materialid].color;
+				if(rconfig.antialiasing)
+				{
+					//Use random subsampling
+				}else{
+				color = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, time, 
+					geoms, numberOfGeoms, mats, numberOfMaterials);
+				}
+
+				break;
+			}
+		}else{
+			//Clear pixels that don't hit anything
+			color = glm::vec3(0,0,0);
+		}
+
+		return color;
+}
+
 //Kernel that blacks out a given image buffer
 __global__ void clearImage(glm::vec2 resolution, glm::vec3* image){
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -193,6 +237,7 @@ __global__ void clearImage(glm::vec2 resolution, glm::vec3* image){
 		image[index] = glm::vec3(0,0,0);
 	}
 }
+
 
 //Kernel that writes the image to the OpenGL PBO directly.
 __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* image){
@@ -238,41 +283,12 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 	int index = x + (y * resolution.x);
 
 	if((x<=resolution.x && y<=resolution.y)){  
+		
 		//Valid pixel, away we go!
-		//First we must have a primary ray
+		
 		ray primeRay = raycastFromCameraKernel(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
 
-		//Calculate impact of primary ray
-		float dist;
-		glm::vec3 intersectionPoint;
-		glm::vec3 normal;
-		int ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
-
-		if(ind >= 0)
-		{
-			//We have something to draw. 
-			switch(rconfig.mode)
-			{
-			case NORMAL_DEBUG:
-				//Debug render. Display normals of very first impacted surface.
-				colors[index] = glm::abs(normal);
-				break;
-			case DISTANCE_DEBUG:
-				colors[index] = glm::vec3(1,1,1)*(1-dist/rconfig.distanceShadeRange);
-				break;
-			case RAYTRACE:
-				//TODO Implement actual raytracer here
-				//colors[index] = mats[geoms[ind].materialid].color;
-				colors[index] = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, time, 
-					geoms, numberOfGeoms, mats, numberOfMaterials);
-
-
-				break;
-			}
-		}else{
-			//Clear pixels that don't hit anything
-			colors[index] = glm::vec3(0,0,0);
-		}
+		colors[index] = traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials);
 	}
 }
 

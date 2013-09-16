@@ -63,9 +63,15 @@ int main(int argc, char** argv){
 
   //Note, these constants must sum to 1.
   renderOpts->ka =  0.01f;
-  renderOpts->kd =  0.90f;
-  renderOpts->ks =  0.09f;
+  renderOpts->kd =  0.80f;
+  renderOpts->ks =  0.19f;
   renderOpts->ambientLight = glm::vec3(1,1,1);
+ 
+  //Rendring toggle options
+  renderOpts->antialiasing = false;
+  renderOpts->maxSamplesPerPixel = 25;
+  renderOpts->minSamplesPerPixel = 4;
+  
 
   if(targetFrame>=renderCam->frames){
     cout << "Warning: Specified target frame is out of range, defaulting to frame 0." << endl;

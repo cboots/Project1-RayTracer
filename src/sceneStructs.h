@@ -84,6 +84,12 @@ struct renderOptions{
 	float kd;
 	float ks;
 	glm::vec3 ambientLight;
+
+	//Optional rendering settings
+	bool softShadows;
+	bool antialiasing;
+	int minSamplesPerPixel;
+	int maxSamplesPerPixel;
 };
 
 #endif //CUDASTRUCTS_H
