@@ -69,7 +69,7 @@ int main(int argc, char** argv){
  
   //Rendring toggle options
   renderOpts->antialiasing = false;
-  renderOpts->maxSamplesPerPixel = 9;
+  renderOpts->maxSamplesPerPixel = 16;
   renderOpts->minSamplesPerPixel = 1;
   renderOpts->aargbThresholds = glm::vec3(0.01,0.01,0.01);
   

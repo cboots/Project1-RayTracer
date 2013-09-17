@@ -229,9 +229,9 @@ __host__ __device__ int estimateNumSamples(int x, int y, glm::vec2 resolution, g
 	//Compute RMSD in local window 3x3
 	int n = 0;
 	glm::vec3 accumulator = glm::vec3(0,0,0);
-	for(int yi = MAX(0,y - 1); yi <= MIN(y + 1, resolution.y); ++yi)
+	for(int yi = MAX(0,y - 1); yi <= MIN(y + 1, resolution.y-1); ++yi)
 	{
-		for(int xi = MAX(0,x - 1); xi <= MIN(x + 1, resolution.x); ++xi)
+		for(int xi = MAX(0,x - 1); xi <= MIN(x + 1, resolution.x-1); ++xi)
 		{
 			++n;
 			int index = xi + (yi * resolution.x);
@@ -243,9 +243,9 @@ __host__ __device__ int estimateNumSamples(int x, int y, glm::vec2 resolution, g
 	accumulator = glm::vec3(0,0,0);
 
 
-	for(int yi = MAX(0,y - 1); yi <= MIN(y + 1, resolution.y); ++yi)
+	for(int yi = MAX(0,y - 1); yi <= MIN(y + 1, resolution.y-1); ++yi)
 	{
-		for(int xi = MAX(0,x - 1); xi <= MIN(x + 1, resolution.x); ++xi)
+		for(int xi = MAX(0,x - 1); xi <= MIN(x + 1, resolution.x-1); ++xi)
 		{
 			int index = xi + (yi * resolution.x);
 			accumulator += (colors[index]-mean)*(colors[index]-mean);
@@ -310,9 +310,18 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
 	}
 }
 
+__global__ void estimateSamples(glm::vec2 resolution, renderOptions rconfig, glm::vec3* colors, int* numSamples)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int index = x + (y * resolution.x);
+
+	numSamples[index] = estimateNumSamples(x,y,resolution,colors, rconfig);
+}
+
 //TODO: IMPLEMENT raytraceRay Kernel FUNCTION
 //Core raytracer kernel
-__global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, renderOptions rconfig, glm::vec3* colors,
+__global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, renderOptions rconfig, glm::vec3* colors, int* numSamples,
 							staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -325,20 +334,19 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 			thrust::default_random_engine rng(hash(time+index));
 			thrust::uniform_real_distribution<float> u0505(-0.5,0.5);
 
-			int numSamples = estimateNumSamples(x,y,resolution,colors, rconfig);
 
-			for(int i = 0; i < numSamples; ++i)
+			for(int i = 0; i < numSamples[index]; ++i)
 			{
 
 				ray primeRay = raycastFromCameraKernel(resolution, time, x+u0505(rng), y+u0505(rng), cam.position, cam.view, cam.up, cam.fov);
-				colors[index] += traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials)/((float)numSamples);
+				colors[index] += traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials)/((float)numSamples[index]);
 
 			}
 
 			if(rconfig.mode == ALIASING_DEBUG)
 			{
 				//High sampling modes
-				if(numSamples > rconfig.minSamplesPerPixel){
+				if(numSamples[index] > rconfig.minSamplesPerPixel){
 					colors[index] = glm::vec3(0,1,0);
 				}
 			}
@@ -364,6 +372,11 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 	glm::vec3* cudaimage = NULL;
 	cudaMalloc((void**)&cudaimage, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3));
 	cudaMemcpy( cudaimage, renderCam->image, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3), cudaMemcpyHostToDevice);
+
+	//Array to hold samples per pixel (for adaptive anti-aliasing)
+	int* cudasamples = NULL;
+	cudaMalloc((void**)&cudasamples, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3));
+	//Don't need to copy anything, it just stays on GPU
 
 	//package geometry and materials and sent to GPU
 	staticGeom* geomList = new staticGeom[numberOfGeoms];
@@ -404,14 +417,12 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 	glm::vec3 normal;
 	float result = boxIntersectionTest(geomList[0], r, intersectionPoint, normal);
 
-	if(renderOpts->mode == ALIASING_DEBUG && (iterations % 2 == 0)){//Only clear the image every other time in debug mode
-		clearImage<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage);
-	}else{
-		clearImage<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage);
+	estimateSamples<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, *renderOpts, cudaimage, cudasamples);
 
-	}
+	clearImage<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage);
+
 	//kernel launches
-	raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, *renderOpts, cudaimage, cudageoms, numberOfGeoms, cudamats, numberOfMaterials);
+	raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, *renderOpts, cudaimage, cudasamples, cudageoms, numberOfGeoms, cudamats, numberOfMaterials);
 
 	sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
 
@@ -420,6 +431,7 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 
 	//free up stuff, or else we'll leak memory like a madman
 	cudaFree( cudaimage );
+	cudaFree( cudasamples);
 	cudaFree( cudamats  );
 	cudaFree( cudageoms );
 	delete geomList;
