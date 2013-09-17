@@ -168,7 +168,7 @@ __host__ __device__ glm::vec3 calculatePhongIllumination(ray primeRay, glm::vec3
 
 //TODO: verify raycastFromCameraKernel FUNCTION
 //Function that does the initial raycast from the camera
-__host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time, int x, int y, glm::vec3 eye, 
+__host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time, float x, float y, glm::vec3 eye, 
 												glm::vec3 view, glm::vec3 up, glm::vec2 fov)
 {
 	ray r;
@@ -185,44 +185,84 @@ __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time
 }
 
 __host__ __device__ glm::vec3 traceRay(ray primeRay, float time, renderOptions rconfig, 
-							staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
+									   staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
 {
-		glm::vec3 color;
-		//First we must have a primary ray
-		//Calculate impact of primary ray
-		float dist;
-		glm::vec3 intersectionPoint;
-		glm::vec3 normal;
-		int ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
+	glm::vec3 color;
+	//First we must have a primary ray
+	//Calculate impact of primary ray
+	float dist;
+	glm::vec3 intersectionPoint;
+	glm::vec3 normal;
+	int ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
 
-		if(ind >= 0)
+	if(ind >= 0)
+	{
+		//We have something to draw. 
+		switch(rconfig.mode)
 		{
-			//We have something to draw. 
-			switch(rconfig.mode)
-			{
-			case NORMAL_DEBUG:
-				//Debug render. Display normals of very first impacted surface.
-				color = glm::abs(normal);
-				break;
-			case DISTANCE_DEBUG:
-				color = glm::vec3(1,1,1)*(1-dist/rconfig.distanceShadeRange);
-				break;
-			case RAYTRACE:
-				//TODO Implement actual raytracer here
-				//colors[index] = mats[geoms[ind].materialid].color;
-				if(rconfig.antialiasing)
-				{
-					//Use random subsampling
-				}else{
-				color = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, time, 
-					geoms, numberOfGeoms, mats, numberOfMaterials);
-				}
-
-				break;
-			}
+		case NORMAL_DEBUG:
+			//Debug render. Display normals of very first impacted surface.
+			color = glm::abs(normal);
+			break;
+		case DISTANCE_DEBUG:
+			color = glm::vec3(1,1,1)*(1-dist/rconfig.distanceShadeRange);
+			break;
+		case RAYTRACE:
+		case ALIASING_DEBUG:
+			//TODO Implement actual raytracer here
+			color = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, time, 
+				geoms, numberOfGeoms, mats, numberOfMaterials);
+			break;
 		}
 
-		return color;
+	}
+
+	return color;
+}
+
+
+
+__host__ __device__ int estimateNumSamples(int x, int y, glm::vec2 resolution, glm::vec3* colors, renderOptions rconfig)
+{
+	//TODO implement more flexible options
+
+	//Compute RMSD in local window 3x3
+	int n = 0;
+	glm::vec3 accumulator = glm::vec3(0,0,0);
+	for(int yi = MAX(0,y - 1); yi <= MIN(y + 1, resolution.y); ++yi)
+	{
+		for(int xi = MAX(0,x - 1); xi <= MIN(x + 1, resolution.x); ++xi)
+		{
+			++n;
+			int index = xi + (yi * resolution.x);
+			accumulator += colors[index];
+		}
+	}
+
+	glm::vec3 mean = accumulator/(float)n;
+	accumulator = glm::vec3(0,0,0);
+
+
+	for(int yi = MAX(0,y - 1); yi <= MIN(y + 1, resolution.y); ++yi)
+	{
+		for(int xi = MAX(0,x - 1); xi <= MIN(x + 1, resolution.x); ++xi)
+		{
+			int index = xi + (yi * resolution.x);
+			accumulator += (colors[index]-mean)*(colors[index]-mean);
+		}
+	}
+
+	glm::vec3 RMSD = glm::sqrt(accumulator/(float)n);
+
+	if(glm::any(glm::greaterThan(RMSD, rconfig.aargbThresholds)))
+	{
+		return rconfig.maxSamplesPerPixel;
+	}
+	else
+	{
+		return rconfig.minSamplesPerPixel;
+	}
+
 }
 
 //Kernel that blacks out a given image buffer
@@ -230,7 +270,7 @@ __global__ void clearImage(glm::vec2 resolution, glm::vec3* image){
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int index = x + (y * resolution.x);
-	if(x<=resolution.x && y<=resolution.y){
+	if(x<resolution.x && y<resolution.y){
 		image[index] = glm::vec3(0,0,0);
 	}
 }
@@ -243,7 +283,7 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int index = x + (y * resolution.x);
 
-	if(x<=resolution.x && y<=resolution.y){
+	if(x<resolution.x && y<resolution.y){
 
 		glm::vec3 color;
 		color.x = image[index].x*255.0;
@@ -279,10 +319,34 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int index = x + (y * resolution.x);
 
-	if((x<=resolution.x && y<=resolution.y)){  
+	if((x<resolution.x && y<resolution.y)){  
 		//Valid pixel, away we go!
-		ray primeRay = raycastFromCameraKernel(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
-		colors[index] = traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials);
+		if(rconfig.antialiasing){
+			thrust::default_random_engine rng(hash(time+index));
+			thrust::uniform_real_distribution<float> u0505(-0.5,0.5);
+
+			int numSamples = estimateNumSamples(x,y,resolution,colors, rconfig);
+
+			for(int i = 0; i < numSamples; ++i)
+			{
+
+				ray primeRay = raycastFromCameraKernel(resolution, time, x+u0505(rng), y+u0505(rng), cam.position, cam.view, cam.up, cam.fov);
+				colors[index] += traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials)/((float)numSamples);
+
+			}
+
+			if(rconfig.mode == ALIASING_DEBUG)
+			{
+				//High sampling modes
+				if(numSamples > rconfig.minSamplesPerPixel){
+					colors[index] = glm::vec3(0,1,0);
+				}
+			}
+		}else{
+			//simply cast a single ray
+			ray primeRay = raycastFromCameraKernel(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
+			colors[index] = traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials);
+		}
 	}
 }
 
@@ -340,8 +404,12 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 	glm::vec3 normal;
 	float result = boxIntersectionTest(geomList[0], r, intersectionPoint, normal);
 
-	clearImage<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage);
+	if(renderOpts->mode == ALIASING_DEBUG && (iterations % 2 == 0)){//Only clear the image every other time in debug mode
+		clearImage<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage);
+	}else{
+		clearImage<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage);
 
+	}
 	//kernel launches
 	raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, *renderOpts, cudaimage, cudageoms, numberOfGeoms, cudamats, numberOfMaterials);
 

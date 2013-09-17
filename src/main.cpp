@@ -69,8 +69,9 @@ int main(int argc, char** argv){
  
   //Rendring toggle options
   renderOpts->antialiasing = false;
-  renderOpts->maxSamplesPerPixel = 25;
-  renderOpts->minSamplesPerPixel = 4;
+  renderOpts->maxSamplesPerPixel = 9;
+  renderOpts->minSamplesPerPixel = 1;
+  renderOpts->aargbThresholds = glm::vec3(0.01,0.01,0.01);
   
   renderOpts->softShadows= false;
   renderOpts->numShadowRays = 25;
@@ -266,13 +267,22 @@ void runCuda(){
 			   //Enter normal debug mode
 			   renderOpts->mode = NORMAL_DEBUG;
 			   break;
+		   case '4':
+			   //Enter normal debug mode
+			   renderOpts->mode = ALIASING_DEBUG;
+			   break;
 		   case 'w':
 			   //Look up
 			   break;
 		   case 'r':
 //			   restoreCamDefaults();
 			   break;
-				   
+		   case 'A':
+			   renderOpts->antialiasing = !renderOpts->antialiasing;
+			   break;
+		   case 'S':
+			   renderOpts->softShadows = !renderOpts->softShadows;
+			   break;
 		}
 	    //TODO: Add more keyboard controls here
 		

@@ -12,7 +12,7 @@
 #include <string>
 
 enum GEOMTYPE{ SPHERE, CUBE, MESH };
-enum RENDERMODE{RAYTRACE, NORMAL_DEBUG, DISTANCE_DEBUG};
+enum RENDERMODE{RAYTRACE, NORMAL_DEBUG, DISTANCE_DEBUG,ALIASING_DEBUG};
 
 struct ray {
 	glm::vec3 origin;
@@ -92,6 +92,7 @@ struct renderOptions{
 	bool antialiasing;
 	int minSamplesPerPixel;
 	int maxSamplesPerPixel;
+	glm::vec3 aargbThresholds;
 };
 
 #endif //CUDASTRUCTS_H
