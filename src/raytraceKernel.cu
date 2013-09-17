@@ -319,6 +319,19 @@ __global__ void estimateSamples(glm::vec2 resolution, renderOptions rconfig, glm
 	numSamples[index] = estimateNumSamples(x,y,resolution,colors, rconfig);
 }
 
+
+__global__ void drawOverSamples(glm::vec2 resolution, glm::vec3* colors, int* numSamples, renderOptions rconfig)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int index = x + (y * resolution.x);
+
+	if(numSamples[index] > rconfig.minSamplesPerPixel){
+		colors[index] = glm::vec3(0,1,0);
+	}
+}
+
+
 //TODO: IMPLEMENT raytraceRay Kernel FUNCTION
 //Core raytracer kernel
 __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, renderOptions rconfig, glm::vec3* colors, int* numSamples,
@@ -343,13 +356,6 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 
 			}
 
-			if(rconfig.mode == ALIASING_DEBUG)
-			{
-				//High sampling modes
-				if(numSamples[index] > rconfig.minSamplesPerPixel){
-					colors[index] = glm::vec3(0,1,0);
-				}
-			}
 		}else{
 			//simply cast a single ray
 			ray primeRay = raycastFromCameraKernel(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
@@ -423,11 +429,16 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 
 	//kernel launches
 	raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, *renderOpts, cudaimage, cudasamples, cudageoms, numberOfGeoms, cudamats, numberOfMaterials);
-
-	sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
-
+	
 	//retrieve image from GPU
 	cudaMemcpy( renderCam->image, cudaimage, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+
+	if(renderOpts->mode == ALIASING_DEBUG)
+	{
+		drawOverSamples<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage, cudasamples, *renderOpts);
+	}
+
+	sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
 
 	//free up stuff, or else we'll leak memory like a madman
 	cudaFree( cudaimage );

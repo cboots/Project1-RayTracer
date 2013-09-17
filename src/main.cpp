@@ -67,14 +67,14 @@ int main(int argc, char** argv){
   renderOpts->ks =  0.19f;
   renderOpts->ambientLight = glm::vec3(1,1,1);
  
-  //Rendring toggle options
+  //Rendering toggle options
   renderOpts->antialiasing = false;
-  renderOpts->maxSamplesPerPixel = 16;
+  renderOpts->maxSamplesPerPixel = 9;
   renderOpts->minSamplesPerPixel = 1;
   renderOpts->aargbThresholds = glm::vec3(0.01,0.01,0.01);
   
   renderOpts->softShadows= false;
-  renderOpts->numShadowRays = 25;
+  renderOpts->numShadowRays = 32;
   
   if(targetFrame>=renderCam->frames){
     cout << "Warning: Specified target frame is out of range, defaulting to frame 0." << endl;
