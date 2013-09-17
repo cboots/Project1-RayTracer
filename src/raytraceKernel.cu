@@ -15,6 +15,7 @@
 #include "intersections.h"
 #include "interactions.h"
 #include <vector>
+#include "cuda_profiler_api.h"
 
 #if CUDA_VERSION >= 5000
 #include <helper_math.h>
@@ -100,7 +101,7 @@ __host__ __device__ float calculateDiffuseScalar(glm::vec3 normal, ray lightDire
 __host__ __device__ glm::vec3 computeShadowedIntensity(ray primeRay, glm::vec3 intersectionPoint, int hitGeomIndex, glm::vec3 normal, renderOptions rconfig, 
 													   int time,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials, int lightIndex, ray& lightDirection)
 {
-	//TODO: implement shadows
+	//TODO: implement soft shadows
 	material lightMat =  mats[geoms[lightIndex].materialid];
 
 	//For now just return the center of the light source. Treat as a point source
@@ -166,9 +167,9 @@ __host__ __device__ glm::vec3 calculatePhongIllumination(ray primeRay, glm::vec3
 }
 
 
-//TODO: verify raycastFromCameraKernel FUNCTION
 //Function that does the initial raycast from the camera
-__host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time, int x, int y, glm::vec3 eye, 
+//Takes floats for pixels to allow subpixel resolution
+__host__ __device__ ray raycastFromCamera(glm::vec2 resolution, float time, float x, float y, glm::vec3 eye, 
 												glm::vec3 view, glm::vec3 up, glm::vec2 fov)
 {
 	ray r;
@@ -185,47 +186,44 @@ __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time
 }
 
 __host__ __device__ glm::vec3 traceRay(ray primeRay, float time, renderOptions rconfig, 
-							staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
+									   staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
 {
-		glm::vec3 color;
-		//First we must have a primary ray
-		//Calculate impact of primary ray
-		float dist;
-		glm::vec3 intersectionPoint;
-		glm::vec3 normal;
-		int ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
+	glm::vec3 color;
+	//First we must have a primary ray
+	//Calculate impact of primary ray
+	float dist;
+	glm::vec3 intersectionPoint;
+	glm::vec3 normal;
+	int ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
 
-		if(ind >= 0)
+	if(ind >= 0)
+	{
+		//We have something to draw. 
+		switch(rconfig.mode)
 		{
-			//We have something to draw. 
-			switch(rconfig.mode)
-			{
-			case NORMAL_DEBUG:
-				//Debug render. Display normals of very first impacted surface.
-				color = glm::abs(normal);
-				break;
-			case DISTANCE_DEBUG:
-				color = glm::vec3(1,1,1)*(1-dist/rconfig.distanceShadeRange);
-				break;
-			case RAYTRACE:
-				//TODO Implement actual raytracer here
-				//colors[index] = mats[geoms[ind].materialid].color;
-				if(rconfig.antialiasing)
-				{
-					//Use random subsampling
-				}else{
-				color = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, time, 
-					geoms, numberOfGeoms, mats, numberOfMaterials);
-				}
+		case NORMAL_DEBUG:
+			//Debug render. Display normals of very first impacted surface.
+			color = glm::abs(normal);
+			break;
+		case DISTANCE_DEBUG:
+			color = glm::vec3(1,1,1)*(1-dist/rconfig.distanceShadeRange);
+			break;
+		case RAYTRACE:
+			//TODO Implement actual raytracer here
+			//colors[index] = mats[geoms[ind].materialid].color;
 
-				break;
-			}
-		}else{
-			//Clear pixels that don't hit anything
-			color = glm::vec3(0,0,0);
+			color = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, time, 
+				geoms, numberOfGeoms, mats, numberOfMaterials);
+
+
+			break;
 		}
+	}else{
+		//Clear pixels that don't hit anything
+		color = glm::vec3(0,0,0);
+	}
 
-		return color;
+	return color;
 }
 
 //Kernel that blacks out a given image buffer
@@ -240,7 +238,7 @@ __global__ void clearImage(glm::vec2 resolution, glm::vec3* image){
 
 
 //Kernel that writes the image to the OpenGL PBO directly.
-__global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* image){
+__global__ void sendImageToPBOKernel(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* image){
 
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -275,20 +273,30 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
 
 //TODO: IMPLEMENT raytraceRay Kernel FUNCTION
 //Core raytracer kernel
-__global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, renderOptions rconfig, glm::vec3* colors,
+__global__ void raytraceRayKernel(glm::vec2 resolution, float time, cameraData cam, renderOptions rconfig, glm::vec3* colors,
 							staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
 {
-	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int x = ((blockIdx.x * blockDim.x) + threadIdx.x) % ((int)resolution.x); //
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int index = x + (y * resolution.x);
 
 	if((x<=resolution.x && y<=resolution.y)){  
-		
-		//Valid pixel, away we go!
-		
-		ray primeRay = raycastFromCameraKernel(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
 
-		colors[index] = traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials);
+		//Valid pixel, away we go!
+		if(rconfig.antialiasing)
+		{
+			thrust::default_random_engine rng(hash(time+index));
+			thrust::uniform_real_distribution<float> u0505(-0.5,0.5);
+
+			//Use random subsampling
+			ray primeRay = raycastFromCamera(resolution, time, x+u0505(rng), y+u0505(rng), cam.position, cam.view, cam.up, cam.fov);
+			colors[index] += traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials) / ((float)rconfig.minSamplesPerPixel);			
+
+		}else{
+
+			ray primeRay = raycastFromCamera(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
+			colors[index] = traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials);
+		}
 	}
 }
 
@@ -299,8 +307,14 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 	// set up crucial magic
 	int tileSize = 8;
 	dim3 threadsPerBlock(tileSize, tileSize);
-	dim3 fullBlocksPerGrid((int)ceil(float(renderCam->resolution.x)/float(tileSize)), 
-		(int)ceil(float(renderCam->resolution.y)/float(tileSize)));
+	int xBlocks, yBlocks;
+	yBlocks = (int)ceil(float(renderCam->resolution.y)/float(tileSize));
+	if(renderOpts->antialiasing)
+		xBlocks = (int)ceil(float(renderOpts->minSamplesPerPixel*renderCam->resolution.x)/float(tileSize));
+	else
+		xBlocks = (int)ceil(float(renderCam->resolution.x)/float(tileSize));
+
+	dim3 fullBlocksPerGrid(xBlocks, yBlocks);
 
 	//send image to GPU
 	glm::vec3* cudaimage = NULL;
@@ -346,10 +360,13 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 	glm::vec3 normal;
 	float result = boxIntersectionTest(geomList[0], r, intersectionPoint, normal);
 
-	//kernel launches
-	raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, *renderOpts, cudaimage, cudageoms, numberOfGeoms, cudamats, numberOfMaterials);
+	//Clear image to make render kernel simpler
+	clearImage<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage);
 
-	sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
+	//kernel launches
+	raytraceRayKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, *renderOpts, cudaimage, cudageoms, numberOfGeoms, cudamats, numberOfMaterials);
+
+	sendImageToPBOKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
 
 	//retrieve image from GPU
 	cudaMemcpy( renderCam->image, cudaimage, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3), cudaMemcpyDeviceToHost);

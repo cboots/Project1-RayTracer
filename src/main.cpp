@@ -70,7 +70,7 @@ int main(int argc, char** argv){
   //Rendring toggle options
   renderOpts->antialiasing = false;
   renderOpts->maxSamplesPerPixel = 25;
-  renderOpts->minSamplesPerPixel = 4;
+  renderOpts->minSamplesPerPixel = 5;
   
   renderOpts->softShadows= false;
   renderOpts->numShadowRays = 25;
@@ -247,7 +247,8 @@ void runCuda(){
 		switch (key) 
 		{
 		   case(27)://ESC Key
-			   exit(1);
+				cudaDeviceReset(); 
+			   exit(0);
 			   break;
 		///Mode selection options
 		   case '1':
@@ -267,6 +268,10 @@ void runCuda(){
 			   break;
 		   case 'r':
 //			   restoreCamDefaults();
+			   break;
+		   case 'A':
+			   //Toggle antialiasing
+			   renderOpts->antialiasing = !renderOpts->antialiasing;
 			   break;
 				   
 		}
