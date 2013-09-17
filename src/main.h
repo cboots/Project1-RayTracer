@@ -29,6 +29,7 @@
 #include "raytraceKernel.h"
 #include "utilities.h"
 #include "scene.h"
+#include <ctime>
 
 #if CUDA_VERSION >= 5000
     #include <helper_cuda.h>
@@ -52,6 +53,7 @@ camera  camDefaults;
 renderOptions* renderOpts;
 int targetFrame;
 int iterations;
+float fps;
 bool finishedRender;
 bool singleFrameMode;
 

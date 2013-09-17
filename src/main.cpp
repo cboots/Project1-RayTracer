@@ -70,7 +70,7 @@ int main(int argc, char** argv){
   //Rendring toggle options
   renderOpts->antialiasing = false;
   renderOpts->maxSamplesPerPixel = 25;
-  renderOpts->minSamplesPerPixel = 5;
+  renderOpts->minSamplesPerPixel = 4;
   
   renderOpts->softShadows= false;
   renderOpts->numShadowRays = 25;
@@ -142,8 +142,12 @@ void runCuda(){
     for(int i=0; i<renderScene->materials.size(); i++){
       materials[i] = renderScene->materials[i];
     }
-    
-	
+
+	//Measure frame rate
+    static clock_t tic;
+	clock_t toc = tic;
+	tic = clock();
+	fps = 0.6*fps + 0.4*CLOCKS_PER_SEC/float(tic-toc);
 
     // execute the kernel
     cudaRaytraceCore(dptr, renderCam, renderOpts, targetFrame, iterations, materials, renderScene->materials.size(), geoms, renderScene->objects.size() );
@@ -202,8 +206,8 @@ void runCuda(){
 
 	void display(){
 		runCuda();
-
-		string title = "CIS565 Render | " + utilityCore::convertIntToString(iterations) + " Iterations";
+		
+		string title = "565Raytracer | " + utilityCore::convertIntToString(iterations) + " Iterations | FPS " + utilityCore::convertIntToString(fps);
 		glfwSetWindowTitle(title.c_str());
 
 		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, pbo);
@@ -224,7 +228,7 @@ void runCuda(){
 	void display(){
 		runCuda();
 
-		string title = "565Raytracer | " + utilityCore::convertIntToString(iterations) + " Iterations";
+		string title = "565Raytracer | " + utilityCore::convertIntToString(iterations) + " Iterations | FPS " + utilityCore::convertIntToString(fps);
 		glutSetWindowTitle(title.c_str());
 
 		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, pbo);
@@ -247,8 +251,7 @@ void runCuda(){
 		switch (key) 
 		{
 		   case(27)://ESC Key
-				cudaDeviceReset(); 
-			   exit(0);
+			   exit(1);
 			   break;
 		///Mode selection options
 		   case '1':
@@ -268,10 +271,6 @@ void runCuda(){
 			   break;
 		   case 'r':
 //			   restoreCamDefaults();
-			   break;
-		   case 'A':
-			   //Toggle antialiasing
-			   renderOpts->antialiasing = !renderOpts->antialiasing;
 			   break;
 				   
 		}
