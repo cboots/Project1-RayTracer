@@ -344,7 +344,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 	if((x<resolution.x && y<resolution.y)){  
 		//Valid pixel, away we go!
 		if(rconfig.antialiasing){
-			thrust::default_random_engine rng(hash(time+index));
+			thrust::default_random_engine rng(hash(time*(index+1)));
 			thrust::uniform_real_distribution<float> u0505(-0.5,0.5);
 
 

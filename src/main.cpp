@@ -62,8 +62,8 @@ int main(int argc, char** argv){
   renderOpts->distanceShadeRange = 20.0f;
 
   //Note, these constants must sum to 1.
-  renderOpts->ka =  0.01f;
-  renderOpts->kd =  0.80f;
+  renderOpts->ka =  0.05f;
+  renderOpts->kd =  0.75f;
   renderOpts->ks =  0.19f;
   renderOpts->ambientLight = glm::vec3(1,1,1);
  
