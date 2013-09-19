@@ -97,31 +97,73 @@ __host__ __device__ float calculateDiffuseScalar(glm::vec3 normal, ray lightDire
 	return MAX(0,glm::dot(normal, lightDirection.direction));
 }
 
-__host__ __device__ glm::vec3 computeShadowedIntensity(ray primeRay, glm::vec3 intersectionPoint, int hitGeomIndex, glm::vec3 normal, renderOptions rconfig, 
-													   int time,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials, int lightIndex, ray& lightDirection)
+__host__ __device__ glm::vec3 traceShadowRay(ray feeler, renderOptions rconfig, staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials, int targetLight)
 {
-	//TODO: implement soft shadows
-	material lightMat =  mats[geoms[lightIndex].materialid];
-
-	//For now just return the center of the light source. Treat as a point source
-	lightDirection.origin = intersectionPoint;
-	lightDirection.direction = glm::normalize(geoms[lightIndex].translation - intersectionPoint);
-
 	glm::vec3 lightHitPoint;
 	float lightDistance;
-	glm::vec3 normal1;
-	if(lightIndex == firstIntersect(geoms, numberOfGeoms, lightDirection, lightHitPoint, normal1, lightDistance))
-		return lightMat.color*lightMat.emittance;
+	glm::vec3 normal;
+	if(firstIntersect(geoms, numberOfGeoms, feeler, lightHitPoint, normal, lightDistance) == targetLight)
+		//Return color of light
+		return mats[geoms[targetLight].materialid].color*mats[geoms[targetLight].materialid].emittance;
 	else
 		//Shadow
 		return glm::vec3(0,0,0);
+}
+
+__host__ __device__ glm::vec3 computeShadowedIntensity(ray primeRay, glm::vec3 intersectionPoint, int hitGeomIndex, glm::vec3 normal, renderOptions rconfig, 
+													   float seed,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials, int lightIndex, ray& lightDirection)
+{
+	//TODO: implement soft shadows
+	material lightMat =  mats[geoms[lightIndex].materialid];
+	if(rconfig.softShadows){
+		glm::vec3 color = glm::vec3(0,0,0);
+		glm::vec3 shadowContrib;
+		if(rconfig.parallelShadows)
+		{
+
+		}else{
+			glm::vec3 avgDirection = glm::vec3(0,0,0);
+			lightDirection.origin = intersectionPoint;
+			for(int i = 0; i < rconfig.numShadowRays; ++i)
+			{
+				
+				glm::vec3 randomEndpoint;
+				if(geoms[lightIndex].type == CUBE){
+					randomEndpoint = getRandomPointOnCube(geoms[lightIndex], seed*(i+1));
+				}else{
+					randomEndpoint = getRandomPointOnSphere(geoms[lightIndex], seed*(i+1));
+				}
+
+				lightDirection.direction = glm::normalize(randomEndpoint - intersectionPoint);
+				
+				shadowContrib = traceShadowRay(lightDirection, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, lightIndex);
+				if(shadowContrib.x > 0 || shadowContrib.y > 0 || shadowContrib.z > 0)
+				{
+					color+= shadowContrib/(float)rconfig.numShadowRays;
+					avgDirection += lightDirection.direction;
+
+				}
+			}
+		}
+		lightDirection.direction = glm::normalize(lightDirection.direction);
+		return color;
+	}
+	else{
+		//For now just return the center of the light source. Treat as a point source
+
+		lightDirection.origin = intersectionPoint;
+		lightDirection.direction = glm::normalize(geoms[lightIndex].translation - intersectionPoint);
+
+		return traceShadowRay(lightDirection, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, lightIndex);
+
+	}
 }
 
 //Computes the illumination contributions from each light source at this point.
 //Incorporates ambient, specular, and diffuse reflection as well as shadows.
 //Returns the summed light intensity in rgb components. Perfect reflection and refraction effects are not included.
 __host__ __device__ glm::vec3 calculatePhongIllumination(ray primeRay, glm::vec3 intersectionPoint, int hitGeomIndex, glm::vec3 normal, renderOptions rconfig, 
-														 int time,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
+														 float seed,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
 {
 	//Initialize to ambient component.
 	glm::vec3 totalL = rconfig.ka*rconfig.ambientLight*mats[geoms[hitGeomIndex].materialid].color;
@@ -139,7 +181,7 @@ __host__ __device__ glm::vec3 calculatePhongIllumination(ray primeRay, glm::vec3
 				//Light source, compute contribution
 				ray lightDirection;//An output variable that returns the direction to the center of the effective light source
 				glm::vec3 lightIntensity = computeShadowedIntensity(primeRay, intersectionPoint, hitGeomIndex, normal, rconfig, 
-					time,	geoms, numberOfGeoms, mats, numberOfMaterials, i, lightDirection);
+					seed,	geoms, numberOfGeoms, mats, numberOfMaterials, i, lightDirection);
 
 				if(lightIntensity.x > 0 || lightIntensity.y > 0 || lightIntensity.z > 0){
 					//Compute diffuse contribution
@@ -184,7 +226,7 @@ __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time
 	return r;
 }
 
-__host__ __device__ glm::vec3 traceRay(ray primeRay, float time, renderOptions rconfig, 
+__host__ __device__ glm::vec3 traceRay(ray primeRay, float seed, renderOptions rconfig, 
 									   staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
 {
 	glm::vec3 color;
@@ -210,7 +252,7 @@ __host__ __device__ glm::vec3 traceRay(ray primeRay, float time, renderOptions r
 		case RAYTRACE:
 		case ALIASING_DEBUG:
 			//TODO Implement actual raytracer here
-			color = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, time, 
+			color = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, seed, 
 				geoms, numberOfGeoms, mats, numberOfMaterials);
 			break;
 		}
@@ -254,7 +296,7 @@ __host__ __device__ int estimateNumSamples(int x, int y, glm::vec2 resolution, g
 
 	glm::vec3 RMSD = glm::sqrt(accumulator/(float)n);
 
-	if(glm::any(glm::greaterThan(RMSD, rconfig.aargbThresholds)))
+	if(RMSD.x > rconfig.aargbThresholds.x || RMSD.y > rconfig.aargbThresholds.y || RMSD.z > rconfig.aargbThresholds.z)
 	{
 		return rconfig.maxSamplesPerPixel;
 	}
@@ -340,26 +382,26 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int index = x + (y * resolution.x);
-
+	float seed = (time+index)*numberOfGeoms;
 	if((x<resolution.x && y<resolution.y)){  
 		//Valid pixel, away we go!
 		if(rconfig.antialiasing){
-			thrust::default_random_engine rng(hash(time*(index+1)));
+			thrust::default_random_engine rng(seed);
 			thrust::uniform_real_distribution<float> u0505(-0.5,0.5);
 
 
 			for(int i = 0; i < numSamples[index]; ++i)
 			{
 
-				ray primeRay = raycastFromCameraKernel(resolution, time, x+u0505(rng), y+u0505(rng), cam.position, cam.view, cam.up, cam.fov);
-				colors[index] += traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials)/((float)numSamples[index]);
+				ray primeRay = raycastFromCameraKernel(resolution, seed, x+u0505(rng), y+u0505(rng), cam.position, cam.view, cam.up, cam.fov);
+				colors[index] += traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials)/((float)numSamples[index]);
 
 			}
 
 		}else{
 			//simply cast a single ray
-			ray primeRay = raycastFromCameraKernel(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
-			colors[index] = traceRay(primeRay, time, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials);
+			ray primeRay = raycastFromCameraKernel(resolution, seed, x, y, cam.position, cam.view, cam.up, cam.fov);
+			colors[index] = traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials);
 		}
 	}
 }
@@ -429,10 +471,10 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 
 	//kernel launches
 	raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, *renderOpts, cudaimage, cudasamples, cudageoms, numberOfGeoms, cudamats, numberOfMaterials);
-	
+
 	//retrieve image from GPU
 	cudaMemcpy( renderCam->image, cudaimage, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-	
+
 	if(renderOpts->mode == ALIASING_DEBUG)
 	{
 		drawOverSamples<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage, cudasamples, *renderOpts);

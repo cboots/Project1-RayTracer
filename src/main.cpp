@@ -74,6 +74,7 @@ int main(int argc, char** argv){
   renderOpts->aargbThresholds = glm::vec3(0.01,0.01,0.01);
   
   renderOpts->softShadows= false;
+  renderOpts->parallelShadows = false;
   renderOpts->numShadowRays = 32;
   
   if(targetFrame>=renderCam->frames){

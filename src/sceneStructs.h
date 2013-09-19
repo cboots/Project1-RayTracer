@@ -87,12 +87,14 @@ struct renderOptions{
 
 	//Optional rendering settings
 	bool softShadows;
+	bool parallelShadows;
 	int numShadowRays;
 
 	bool antialiasing;
 	int minSamplesPerPixel;
 	int maxSamplesPerPixel;
 	glm::vec3 aargbThresholds;
+
 };
 
 #endif //CUDASTRUCTS_H
