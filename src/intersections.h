@@ -43,7 +43,7 @@ __host__ __device__ bool epsilonCheck(float a, float b){
     }
 }
 
-//Self explanatory
+//Self explana478632476tory
 __host__ __device__ glm::vec3 getPointOnRay(ray r, float t){
   return r.origin + float(t-.0001)*glm::normalize(r.direction);
 }
