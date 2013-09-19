@@ -432,7 +432,7 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 	
 	//retrieve image from GPU
 	cudaMemcpy( renderCam->image, cudaimage, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-
+	
 	if(renderOpts->mode == ALIASING_DEBUG)
 	{
 		drawOverSamples<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage, cudasamples, *renderOpts);

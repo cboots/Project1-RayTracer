@@ -64,11 +64,11 @@ int main(int argc, char** argv){
   //Note, these constants must sum to 1.
   renderOpts->ka =  0.05f;
   renderOpts->kd =  0.75f;
-  renderOpts->ks =  0.19f;
+  renderOpts->ks =  0.20f;
   renderOpts->ambientLight = glm::vec3(1,1,1);
  
   //Rendering toggle options
-  renderOpts->antialiasing = false;
+  renderOpts->antialiasing = true;
   renderOpts->maxSamplesPerPixel = 9;
   renderOpts->minSamplesPerPixel = 1;
   renderOpts->aargbThresholds = glm::vec3(0.01,0.01,0.01);
@@ -171,7 +171,7 @@ void runCuda(){
       gammaSettings gamma;
       gamma.applyGamma = true;
       gamma.gamma = 1.0/2.2;
-      gamma.divisor = renderCam->iterations;
+      gamma.divisor = 1;//renderCam->iterations;
       outputImage.setGammaSettings(gamma);
       string filename = renderCam->imageName;
       string s;
