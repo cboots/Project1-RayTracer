@@ -196,7 +196,7 @@ SCALE       3 3 3
 
 
 OBJECT 8
-cube
+sphere
 material 7 
 frame 0
 TRANS       -3 7 4

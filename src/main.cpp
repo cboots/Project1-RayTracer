@@ -273,11 +273,11 @@ void keyboard(unsigned char key, int x, int y)
 		break;
 		///Mode selection options
 	case '1':
-		//Enter normal debug mode
+		//Enter normal raytracing mode
 		renderOpts->mode = RAYTRACE;
 		break;
 	case '2':
-		//Enter normal debug mode
+		//Enter distance debug mode
 		renderOpts->mode = DISTANCE_DEBUG;
 		break;
 	case '3':
@@ -285,8 +285,12 @@ void keyboard(unsigned char key, int x, int y)
 		renderOpts->mode = NORMAL_DEBUG;
 		break;
 	case '4':
-		//Enter normal debug mode
+		//Enter aliasing debug mode
 		renderOpts->mode = ALIASING_DEBUG;
+		break;
+	case '5':
+		//Enter shadow debug mode
+		renderOpts->mode = SHADOW_DEBUG;
 		break;
 	case 'w':
 		//Look up

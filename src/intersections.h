@@ -203,7 +203,7 @@ __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& 
 //Sphere intersection test, return -1 if no intersection, otherwise, distance to intersection
 __host__ __device__ float sphereIntersectionTest(staticGeom sphere, ray r, glm::vec3& intersectionPoint, glm::vec3& normal){
   
-  float radius = .5;
+  float radius = 0.5f;
         
   glm::vec3 ro = multiplyMV(sphere.inverseTransform, glm::vec4(r.origin,1.0f));
   glm::vec3 rd = glm::normalize(multiplyMV(sphere.inverseTransform, glm::vec4(r.direction,0.0f)));
@@ -313,7 +313,8 @@ __host__ __device__ glm::vec3 getRandomPointOnSphere(staticGeom sphere, float ra
 	point.x = root*glm::cos(th);
 	point.y = root*glm::sin(th);
 	point.z = u;
-
+	//Scale to half-unit sphere:
+	point /= 2.0f;
     glm::vec3 randPoint = multiplyMV(sphere.transform, glm::vec4(point,1.0f));
 	return randPoint;
 }

@@ -104,7 +104,7 @@ __host__ __device__ glm::vec3 traceShadowRay(ray feeler, renderOptions rconfig, 
 	glm::vec3 normal;
 	if(firstIntersect(geoms, numberOfGeoms, feeler, lightHitPoint, normal, lightDistance) == targetLight)
 		//Return color of light
-		return mats[geoms[targetLight].materialid].color*mats[geoms[targetLight].materialid].emittance;
+			return mats[geoms[targetLight].materialid].color*mats[geoms[targetLight].materialid].emittance;
 	else
 		//Shadow
 		return glm::vec3(0,0,0);
@@ -127,7 +127,7 @@ __host__ __device__ glm::vec3 computeShadowedIntensity(ray primeRay, glm::vec3 i
 			lightDirection.origin = intersectionPoint;
 			for(int i = 0; i < rconfig.numShadowRays; ++i)
 			{
-				
+
 				glm::vec3 randomEndpoint;
 				if(geoms[lightIndex].type == CUBE){
 					randomEndpoint = getRandomPointOnCube(geoms[lightIndex], seed*(i+1));
@@ -136,7 +136,7 @@ __host__ __device__ glm::vec3 computeShadowedIntensity(ray primeRay, glm::vec3 i
 				}
 
 				lightDirection.direction = glm::normalize(randomEndpoint - intersectionPoint);
-				
+
 				shadowContrib = traceShadowRay(lightDirection, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, lightIndex);
 				if(shadowContrib.x > 0 || shadowContrib.y > 0 || shadowContrib.z > 0)
 				{
@@ -183,22 +183,26 @@ __host__ __device__ glm::vec3 calculatePhongIllumination(ray primeRay, glm::vec3
 				ray lightDirection;//An output variable that returns the direction to the center of the effective light source
 				glm::vec3 lightIntensity = computeShadowedIntensity(primeRay, intersectionPoint, hitGeomIndex, normal, rconfig, 
 					seed,	geoms, numberOfGeoms, mats, numberOfMaterials, i, lightDirection, softShadowRegion);
+				if(rconfig.mode == SHADOW_DEBUG)
+				{
+					totalL += lightIntensity;
+				}else{
+					if(lightIntensity.x > 0 || lightIntensity.y > 0 || lightIntensity.z > 0){
+						//Compute diffuse contribution
+						if(rconfig.kd > 0)
+						{
 
-				if(lightIntensity.x > 0 || lightIntensity.y > 0 || lightIntensity.z > 0){
-					//Compute diffuse contribution
-					if(rconfig.kd > 0)
-					{
+							//kd is a global tuning parameter that allows control of each lighting element.
+							totalL += rconfig.kd*(lightIntensity*mats[geoms[hitGeomIndex].materialid].color)
+								*calculateDiffuseScalar(normal, lightDirection);
+						}
 
-						//kd is a global tuning parameter that allows control of each lighting element.
-						totalL += rconfig.kd*(lightIntensity*mats[geoms[hitGeomIndex].materialid].color)
-							*calculateDiffuseScalar(normal, lightDirection);
-					}
-
-					//Compute Specular contribution (only if non-zero specular exponent, otherwise everything will go bright)
-					if(rconfig.ks > 0 && mats[geoms[hitGeomIndex].materialid].specularExponent > 0)
-					{
-						totalL += rconfig.ks*(lightIntensity*mats[geoms[hitGeomIndex].materialid].specularColor)
-							*calculateSpecularScalar(primeRay, lightDirection, normal, mats[geoms[hitGeomIndex].materialid].specularExponent);
+						//Compute Specular contribution (only if non-zero specular exponent, otherwise everything will go bright)
+						if(rconfig.ks > 0 && mats[geoms[hitGeomIndex].materialid].specularExponent > 0)
+						{
+							totalL += rconfig.ks*(lightIntensity*mats[geoms[hitGeomIndex].materialid].specularColor)
+								*calculateSpecularScalar(primeRay, lightDirection, normal, mats[geoms[hitGeomIndex].materialid].specularExponent);
+						}
 					}
 				}
 			}
@@ -252,6 +256,7 @@ __host__ __device__ glm::vec3 traceRay(ray primeRay, float seed, renderOptions r
 			break;
 		case RAYTRACE:
 		case ALIASING_DEBUG:
+		case SHADOW_DEBUG:
 			//TODO Implement actual raytracer here
 			color = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, seed, 
 				geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion);
@@ -386,7 +391,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 	float seed = (time+index);
 	if((x<resolution.x && y<resolution.y)){  
 		//Valid pixel, away we go!
-		
+
 		bool softShadowRegion = numSamples[index] > rconfig.minSamplesPerPixel;
 		if(rconfig.antialiasing){
 			thrust::default_random_engine rng(seed);
@@ -394,7 +399,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 
 			for(int i = 0; i < numSamples[index]; ++i)
 			{
-				
+
 				ray primeRay = raycastFromCameraKernel(resolution, seed, x+u0505(rng), y+u0505(rng), cam.position, cam.view, cam.up, cam.fov);
 				colors[index] += traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion)/((float)numSamples[index]);
 
@@ -441,7 +446,7 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 		newStaticGeom.inverseTransform = geoms[i].inverseTransforms[frame];
 		geomList[i] = newStaticGeom;
 	}
-	
+
 	//Debug code
 	//getRandomPointOnSphere(geomList[7], (float)iterations);
 	staticGeom* cudageoms = NULL;
@@ -469,6 +474,7 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 	glm::vec3 normal;
 	float result = boxIntersectionTest(geomList[0], r, intersectionPoint, normal);
 
+	//Always run just to be safe.
 	estimateSamples<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, *renderOpts, cudaimage, cudasamples);
 
 	clearImage<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage);
