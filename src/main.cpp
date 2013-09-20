@@ -90,7 +90,7 @@ int main(int argc, char** argv){
 
 	renderOpts->softShadows= false;
 	renderOpts->parallelShadows = false;
-	renderOpts->numShadowRays = 32;
+	renderOpts->numShadowRays = 5;
 
 	if(targetFrame>=renderCam->frames){
 		cout << "Warning: Specified target frame is out of range, defaulting to frame 0." << endl;

@@ -383,7 +383,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int index = x + (y * resolution.x);
-	float seed = (time+index)*numberOfGeoms;
+	float seed = (time+index);
 	if((x<resolution.x && y<resolution.y)){  
 		//Valid pixel, away we go!
 		if(rconfig.antialiasing){
