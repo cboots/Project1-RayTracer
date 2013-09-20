@@ -91,7 +91,7 @@ int main(int argc, char** argv){
 
 	renderOpts->softShadows= true;
 	renderOpts->parallelShadows = false;
-	renderOpts->numShadowRays = 9;
+	renderOpts->numShadowRays = 4;
 
 	renderOpts->frameFiltering = true;
 
@@ -310,6 +310,7 @@ void keyboard(unsigned char key, int x, int y)
 		break;
 	case 'F':
 		renderOpts->frameFiltering = !renderOpts->frameFiltering;
+		frameFilterCounter = 0;
 		break;
 	case 'f':
 		frameFilterCounter = 0;
