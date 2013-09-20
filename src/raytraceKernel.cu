@@ -412,13 +412,13 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 			for(int i = 0; i < numSamples[index]; ++i)
 			{
 				ray primeRay = raycastFromCameraKernel(resolution, seed, x+u0505(rng), y+u0505(rng), cam.position, cam.view, cam.up, cam.fov);
-				colors[index] += traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion && !rconfig.adaptiveShadows)/((float)numSamples[index]);
+				colors[index] += traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion || !rconfig.adaptiveShadows)/((float)numSamples[index]);
 			}
 
 		}else{
 			//simply cast a single ray
 			ray primeRay = raycastFromCameraKernel(resolution, seed, x, y, cam.position, cam.view, cam.up, cam.fov);
-			colors[index] += traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion && !rconfig.adaptiveShadows);
+			colors[index] += traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion || !rconfig.adaptiveShadows);
 		}
 	}
 }
