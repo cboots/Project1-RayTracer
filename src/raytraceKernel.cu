@@ -15,6 +15,7 @@
 #include "intersections.h"
 #include "interactions.h"
 #include <vector>
+#include <ctime>
 
 #if CUDA_VERSION >= 5000
 #include <helper_math.h>
@@ -324,6 +325,17 @@ __global__ void clearImage(glm::vec2 resolution, glm::vec3* image){
 }
 
 
+__global__ void scaleImageIntensity(glm::vec2 resolution, glm::vec3* image, float sf)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int index = x + (y * resolution.x);
+	if(x<resolution.x && y<resolution.y){
+		image[index] = sf*image[index];
+	}
+}
+
+
 //Kernel that writes the image to the OpenGL PBO directly.
 __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* image){
 
@@ -388,7 +400,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int index = x + (y * resolution.x);
-	float seed = (time+index);
+	float seed = (time*index);
 	if((x<resolution.x && y<resolution.y)){  
 		//Valid pixel, away we go!
 
@@ -408,14 +420,14 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 		}else{
 			//simply cast a single ray
 			ray primeRay = raycastFromCameraKernel(resolution, seed, x, y, cam.position, cam.view, cam.up, cam.fov);
-			colors[index] = traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion);
+			colors[index] += traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion);
 		}
 	}
 }
 
 //TODO: FINISH Kernel Wrapper FUNCTION
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
-void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOpts, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
+void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOpts, int frame, int iterations, int frameFilterCounter, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
 
 	// set up crucial magic
 	int tileSize = 8;
@@ -477,10 +489,18 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 	//Always run just to be safe.
 	estimateSamples<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, *renderOpts, cudaimage, cudasamples);
 
-	clearImage<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage);
-
+	if(!renderOpts->frameFiltering || frameFilterCounter <= 0){
+		clearImage<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage);
+	}else{
+		scaleImageIntensity<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage, frameFilterCounter-1);
+	}
 	//kernel launches
-	raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, *renderOpts, cudaimage, cudasamples, cudageoms, numberOfGeoms, cudamats, numberOfMaterials);
+	raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)(iterations), cam, *renderOpts, cudaimage, cudasamples, cudageoms, numberOfGeoms, cudamats, numberOfMaterials);
+
+	if(renderOpts->frameFiltering)
+	{
+		scaleImageIntensity<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage, 1.0f/frameFilterCounter);
+	}
 
 	//retrieve image from GPU
 	cudaMemcpy( renderCam->image, cudaimage, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3), cudaMemcpyDeviceToHost);

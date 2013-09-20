@@ -95,6 +95,8 @@ struct renderOptions{
 	int maxSamplesPerPixel;
 	glm::vec3 aargbThresholds;
 
+	bool frameFiltering;
+
 };
 
 #endif //CUDASTRUCTS_H

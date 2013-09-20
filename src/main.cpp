@@ -64,6 +64,7 @@ int main(int argc, char** argv){
 	}
 	// Set up camera stuff from loaded pathtracer settings
 	iterations = 0;
+	frameFilterCounter = 0;
 	renderCam = &renderScene->renderCam;
 	width = renderCam->resolution[0];
 	height = renderCam->resolution[1];
@@ -88,9 +89,11 @@ int main(int argc, char** argv){
 	renderOpts->minSamplesPerPixel = 1;
 	renderOpts->aargbThresholds = glm::vec3(0.01,0.01,0.01);
 
-	renderOpts->softShadows= false;
+	renderOpts->softShadows= true;
 	renderOpts->parallelShadows = false;
-	renderOpts->numShadowRays = 5;
+	renderOpts->numShadowRays = 9;
+
+	renderOpts->frameFiltering = true;
 
 	if(targetFrame>=renderCam->frames){
 		cout << "Warning: Specified target frame is out of range, defaulting to frame 0." << endl;
@@ -148,6 +151,7 @@ void runCuda(){
 	if(iterations<renderCam->iterations){
 		uchar4 *dptr=NULL;
 		iterations++;
+		frameFilterCounter++;
 		cudaGLMapBufferObject((void**)&dptr, pbo);
 
 		//pack geom and material arrays
@@ -168,7 +172,7 @@ void runCuda(){
 		fps = 0.6*fps + 0.4*CLOCKS_PER_SEC/float(tic-toc);
 
 		// execute the kernel
-		cudaRaytraceCore(dptr, renderCam, renderOpts, targetFrame, iterations, materials, renderScene->materials.size(), geoms, renderScene->objects.size() );
+		cudaRaytraceCore(dptr, renderCam, renderOpts, targetFrame, iterations, frameFilterCounter, materials, renderScene->materials.size(), geoms, renderScene->objects.size() );
 
 		// unmap buffer object
 		cudaGLUnmapBufferObject(pbo);
@@ -303,6 +307,12 @@ void keyboard(unsigned char key, int x, int y)
 		break;
 	case 'S':
 		renderOpts->softShadows = !renderOpts->softShadows;
+		break;
+	case 'F':
+		renderOpts->frameFiltering = !renderOpts->frameFiltering;
+		break;
+	case 'f':
+		frameFilterCounter = 0;
 		break;
 	}
 	//TODO: Add more keyboard controls here

@@ -53,6 +53,7 @@ camera  camDefaults;
 renderOptions* renderOpts;
 int targetFrame;
 int iterations;
+int frameFilterCounter;
 float fps;
 bool finishedRender;
 bool singleFrameMode;
