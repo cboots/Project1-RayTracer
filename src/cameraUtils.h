@@ -16,11 +16,6 @@ void camTiltRight(camera* cam, float degrees);
 
 //Movement commands
 void camMoveForward(camera* cam, float units);
-void camMoveBackward(camera* cam, float units);
-void camMoveRight(camera* cam, float units);
-void camMoveLeft(camera* cam, float units);
-void camMoveUp(camera* cam, float units);
-void camMoveDown(camera* cam, float units);
 
 
 

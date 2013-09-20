@@ -235,14 +235,14 @@ __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time
 __host__ __device__ glm::vec3 traceRay(ray primeRay, float seed, renderOptions rconfig, 
 									   staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials, bool softShadowRegion)
 {
-	glm::vec3 color;
+	glm::vec3 color = glm::vec3(1,1,1);
 	//First we must have a primary ray
 	//Calculate impact of primary ray
 	float dist;
 	glm::vec3 intersectionPoint;
 	glm::vec3 normal;
 	int ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
-
+	
 	if(ind >= 0)
 	{
 		//We have something to draw. 
@@ -258,9 +258,33 @@ __host__ __device__ glm::vec3 traceRay(ray primeRay, float seed, renderOptions r
 		case RAYTRACE:
 		case ALIASING_DEBUG:
 		case SHADOW_DEBUG:
-			//TODO Implement actual raytracer here
-			color = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, seed, 
-				geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion);
+
+			for(int i = 1; i < rconfig.traceDepth; ++i){
+				if(mats[geoms[ind].materialid].hasReflective){
+					//reflect ray
+					primeRay.direction = reflect(primeRay.direction, normal);
+					primeRay.origin = intersectionPoint;
+					color *= mats[geoms[ind].materialid].color;
+				}else if(mats[geoms[ind].materialid].hasRefractive)
+				{
+					//refract ray
+
+				}else{
+
+					break;
+				}
+
+				ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
+				if(ind < 0)
+					break;
+			}
+			if(ind >= 0){
+				color *= calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, seed, 
+					geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion);
+			}
+			else{
+				color = glm::vec3(0,0,0);
+			}
 			break;
 		}
 
@@ -403,7 +427,6 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 	float seed = (time*index);
 	if((x<resolution.x && y<resolution.y)){  
 		//Valid pixel, away we go!
-
 		bool softShadowRegion = numSamples[index] > rconfig.minSamplesPerPixel;
 		if(rconfig.antialiasing){
 			thrust::default_random_engine rng(seed);

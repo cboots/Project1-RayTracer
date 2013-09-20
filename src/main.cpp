@@ -74,7 +74,7 @@ int main(int argc, char** argv){
 	//TODO: Set up rendering options
 	renderOpts = new renderOptions();
 	renderOpts->mode = RAYTRACE;
-	renderOpts->traceDepth = 1;
+	renderOpts->traceDepth = 2;
 	renderOpts->distanceShadeRange = 20.0f;
 
 	//Note, these constants must sum to 1.
@@ -280,52 +280,86 @@ void keyboard(unsigned char key, int x, int y)
 	case '1':
 		//Enter normal raytracing mode
 		renderOpts->mode = RAYTRACE;
+		cout << "Raytracing Mode" <<endl;
 		break;
 	case '2':
 		//Enter distance debug mode
 		renderOpts->mode = DISTANCE_DEBUG;
+		cout << "Distance Debug Mode" <<endl;
 		break;
 	case '3':
 		//Enter normal debug mode
 		renderOpts->mode = NORMAL_DEBUG;
+		cout << "Normal Debug Mode" <<endl;
 		break;
 	case '4':
 		//Enter aliasing debug mode
 		renderOpts->mode = ALIASING_DEBUG;
+		cout << "Aliasing Debug Mode" <<endl;
 		break;
 	case '5':
 		//Enter shadow debug mode
 		renderOpts->mode = SHADOW_DEBUG;
+		cout << "Shadow Debug Mode" <<endl;
 		break;
 	case 'w':
-		//Look up
+		//walk forward along view
+		camMoveForward(renderCam, 0.25f);
+		frameFilterCounter = 0;
+		cout << "Camera Position" <<endl;
+		utilityCore::printVec3(renderCam->positions[0]);
+		break;
+	case 's':
+		//walk backward along view
+		camMoveForward(renderCam, -0.25f);
+		frameFilterCounter = 0;
+		cout << "Camera Position" <<endl;
+		utilityCore::printVec3(renderCam->positions[0]);
 		break;
 	case 'r':
-		//			   restoreCamDefaults();
+		*renderCam = camDefaults;
+		cout << "Camera Reset" <<endl;
 		break;
 	case 'A':
 		renderOpts->antialiasing = !renderOpts->antialiasing;
+		
+		cout << "Antialiasing: " << renderOpts->antialiasing<< endl;
 		break;
 	case 'S':
 		renderOpts->softShadows = !renderOpts->softShadows;
+		cout << "Soft Shadows: " << renderOpts->softShadows<< endl;
 		break;
 	case 'x':
 		renderOpts->adaptiveShadows = !renderOpts->adaptiveShadows;
+		cout << "Adaptive Shadows: " << renderOpts->adaptiveShadows<< endl;
 		break;
 	case 'F':
 		renderOpts->frameFiltering = !renderOpts->frameFiltering;
 		frameFilterCounter = 0;
+		
+		cout << "Frame Filter: " << renderOpts->frameFiltering<< endl;
 		break;
 	case 'f':
 		frameFilterCounter = 0;
+		cout << "Frame Filter Reset" << endl;
 		break;
 	case ']':
 		renderOpts->numShadowRays++;
 		cout << "Num Shadow Rays: " << renderOpts->numShadowRays << endl;
 		break;
 	case '[':
-		renderOpts->numShadowRays--;
+		if(renderOpts->traceDepth > 1)
+			renderOpts->numShadowRays--;
 		cout << "Num Shadow Rays: " << renderOpts->numShadowRays << endl;
+		break;
+	case '=':
+		renderOpts->traceDepth++;
+		cout << "Trace Depth: " << renderOpts->traceDepth << endl;
+		break;
+	case '-':
+		if(renderOpts->traceDepth > 1)
+			renderOpts->traceDepth--;
+		cout << "Trace Depth: " << renderOpts->traceDepth << endl;
 		break;
 	}
 	//TODO: Add more keyboard controls here
