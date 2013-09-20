@@ -314,6 +314,14 @@ void keyboard(unsigned char key, int x, int y)
 	case 'f':
 		frameFilterCounter = 0;
 		break;
+	case ']':
+		renderOpts->numShadowRays++;
+		cout << "Num Shadow Rays: " << renderOpts->numShadowRays << endl;
+		break;
+	case '[':
+		renderOpts->numShadowRays--;
+		cout << "Num Shadow Rays: " << renderOpts->numShadowRays << endl;
+		break;
 	}
 	//TODO: Add more keyboard controls here
 
