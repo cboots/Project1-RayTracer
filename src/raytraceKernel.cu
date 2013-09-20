@@ -111,17 +111,18 @@ __host__ __device__ glm::vec3 traceShadowRay(ray feeler, renderOptions rconfig, 
 }
 
 __host__ __device__ glm::vec3 computeShadowedIntensity(ray primeRay, glm::vec3 intersectionPoint, int hitGeomIndex, glm::vec3 normal, renderOptions rconfig, 
-													   float seed,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials, int lightIndex, ray& lightDirection)
+													   float seed,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials, int lightIndex, ray& lightDirection, bool softShadowRegion)
 {
 	//TODO: implement soft shadows
 	material lightMat =  mats[geoms[lightIndex].materialid];
-	if(rconfig.softShadows){
+	if(softShadowRegion && rconfig.softShadows){
 		glm::vec3 color = glm::vec3(0,0,0);
 		glm::vec3 shadowContrib;
 		if(rconfig.parallelShadows)
 		{
 
 		}else{
+
 			glm::vec3 avgDirection = glm::vec3(0,0,0);
 			lightDirection.origin = intersectionPoint;
 			for(int i = 0; i < rconfig.numShadowRays; ++i)
@@ -163,7 +164,7 @@ __host__ __device__ glm::vec3 computeShadowedIntensity(ray primeRay, glm::vec3 i
 //Incorporates ambient, specular, and diffuse reflection as well as shadows.
 //Returns the summed light intensity in rgb components. Perfect reflection and refraction effects are not included.
 __host__ __device__ glm::vec3 calculatePhongIllumination(ray primeRay, glm::vec3 intersectionPoint, int hitGeomIndex, glm::vec3 normal, renderOptions rconfig, 
-														 float seed,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
+														 float seed,	staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials, bool softShadowRegion)
 {
 	//Initialize to ambient component.
 	glm::vec3 totalL = rconfig.ka*rconfig.ambientLight*mats[geoms[hitGeomIndex].materialid].color;
@@ -181,7 +182,7 @@ __host__ __device__ glm::vec3 calculatePhongIllumination(ray primeRay, glm::vec3
 				//Light source, compute contribution
 				ray lightDirection;//An output variable that returns the direction to the center of the effective light source
 				glm::vec3 lightIntensity = computeShadowedIntensity(primeRay, intersectionPoint, hitGeomIndex, normal, rconfig, 
-					seed,	geoms, numberOfGeoms, mats, numberOfMaterials, i, lightDirection);
+					seed,	geoms, numberOfGeoms, mats, numberOfMaterials, i, lightDirection, softShadowRegion);
 
 				if(lightIntensity.x > 0 || lightIntensity.y > 0 || lightIntensity.z > 0){
 					//Compute diffuse contribution
@@ -227,7 +228,7 @@ __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time
 }
 
 __host__ __device__ glm::vec3 traceRay(ray primeRay, float seed, renderOptions rconfig, 
-									   staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials)
+									   staticGeom* geoms, int numberOfGeoms, material* mats, int numberOfMaterials, bool softShadowRegion)
 {
 	glm::vec3 color;
 	//First we must have a primary ray
@@ -253,7 +254,7 @@ __host__ __device__ glm::vec3 traceRay(ray primeRay, float seed, renderOptions r
 		case ALIASING_DEBUG:
 			//TODO Implement actual raytracer here
 			color = calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, seed, 
-				geoms, numberOfGeoms, mats, numberOfMaterials);
+				geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion);
 			break;
 		}
 
@@ -389,19 +390,19 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 			thrust::default_random_engine rng(seed);
 			thrust::uniform_real_distribution<float> u0505(-0.5,0.5);
 
-
+			bool softShadowRegion = numSamples[index] > rconfig.minSamplesPerPixel;
 			for(int i = 0; i < numSamples[index]; ++i)
 			{
-
+				
 				ray primeRay = raycastFromCameraKernel(resolution, seed, x+u0505(rng), y+u0505(rng), cam.position, cam.view, cam.up, cam.fov);
-				colors[index] += traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials)/((float)numSamples[index]);
+				colors[index] += traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion)/((float)numSamples[index]);
 
 			}
 
 		}else{
 			//simply cast a single ray
 			ray primeRay = raycastFromCameraKernel(resolution, seed, x, y, cam.position, cam.view, cam.up, cam.fov);
-			colors[index] = traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials);
+			colors[index] = traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, false);
 		}
 	}
 }
@@ -439,7 +440,9 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, renderOptions* renderOp
 		newStaticGeom.inverseTransform = geoms[i].inverseTransforms[frame];
 		geomList[i] = newStaticGeom;
 	}
-
+	
+	//Debug code
+	//getRandomPointOnSphere(geomList[7], (float)iterations);
 	staticGeom* cudageoms = NULL;
 	cudaMalloc((void**)&cudageoms, numberOfGeoms*sizeof(staticGeom));
 	cudaMemcpy( cudageoms, geomList, numberOfGeoms*sizeof(staticGeom), cudaMemcpyHostToDevice);
