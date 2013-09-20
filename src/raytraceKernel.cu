@@ -386,11 +386,12 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 	float seed = (time+index);
 	if((x<resolution.x && y<resolution.y)){  
 		//Valid pixel, away we go!
+		
+		bool softShadowRegion = numSamples[index] > rconfig.minSamplesPerPixel;
 		if(rconfig.antialiasing){
 			thrust::default_random_engine rng(seed);
 			thrust::uniform_real_distribution<float> u0505(-0.5,0.5);
 
-			bool softShadowRegion = numSamples[index] > rconfig.minSamplesPerPixel;
 			for(int i = 0; i < numSamples[index]; ++i)
 			{
 				
@@ -402,7 +403,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, re
 		}else{
 			//simply cast a single ray
 			ray primeRay = raycastFromCameraKernel(resolution, seed, x, y, cam.position, cam.view, cam.up, cam.fov);
-			colors[index] = traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, false);
+			colors[index] = traceRay(primeRay, seed, rconfig, geoms, numberOfGeoms, mats, numberOfMaterials, softShadowRegion);
 		}
 	}
 }
