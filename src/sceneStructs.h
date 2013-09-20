@@ -87,6 +87,7 @@ struct renderOptions{
 
 	//Optional rendering settings
 	bool softShadows;
+	bool adaptiveShadows;
 	bool parallelShadows;
 	int numShadowRays;
 

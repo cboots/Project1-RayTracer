@@ -90,8 +90,9 @@ int main(int argc, char** argv){
 	renderOpts->aargbThresholds = glm::vec3(0.01,0.01,0.01);
 
 	renderOpts->softShadows= true;
+	renderOpts->adaptiveShadows = true;
 	renderOpts->parallelShadows = false;
-	renderOpts->numShadowRays = 4;
+	renderOpts->numShadowRays = 1;
 
 	renderOpts->frameFiltering = true;
 
@@ -307,6 +308,9 @@ void keyboard(unsigned char key, int x, int y)
 		break;
 	case 'S':
 		renderOpts->softShadows = !renderOpts->softShadows;
+		break;
+	case 'x':
+		renderOpts->adaptiveShadows = !renderOpts->adaptiveShadows;
 		break;
 	case 'F':
 		renderOpts->frameFiltering = !renderOpts->frameFiltering;
