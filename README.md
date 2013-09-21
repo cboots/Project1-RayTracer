@@ -169,6 +169,14 @@ Number of Shadow Feelers | Frame Rate
 Clearly the number of shadow feelers negatively affects performance. 
 However, from an aesthetic point of view adding frame filtering creates the same quality soft shadows with a single feeler while maintaining a 19-20fps frame rate.
 
+Another optimization I worked hard on was adaptive anti-aliasing. 
+Before rendering each frame, a separate kernel parses the previous render and detects pixels with a high Root Mean Square Distance (RMSD) in color space with a 3x3 window.
+The effect of this is to detect regions of high difference between a pixel and its neighbors that would benefit the most from antialiasing.
+
+Running the scene with adaptive antialiasing resulted in a frame rate of 13fps. The regions in bright green are anti-aliased at 9x, while all other pixels are sampled only once.
+**By comparison, anti-aliasing at 9x for every pixel drops the frame rate to 3fps!! That is roughly a 4x speedup.**
+![Adaptive Anti-Aliasing](/screenshots/adaptive_aliasing.PNG "Aliasing Adaptive Highlighting")
+
 -------------------------------------------------------------------------------
 TAKUAscene FORMAT:
 -------------------------------------------------------------------------------
