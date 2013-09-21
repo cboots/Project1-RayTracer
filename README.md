@@ -146,7 +146,28 @@ Strange Refraction Artifact
 PERFORMANCE EVALUATION
 -------------------------------------------------------------------------------
 As mentioned above, this code is not yet optimized for performance. 
+However, I was able to experiment with various settings to get a feel for their impact on performance.
 
+All of the following tests were run on the same machine running a GTX 760 with 1152 CUDA Cores. 
+The same scene with 3 spheres and a single white spherical light in a box was used for all tests.
+
+A baseline frame rate with Phong Shading, specular reflection, hard shadows, no AA, and no frame filtering was measured to be 20fps.
+
+So what happens when we add soft shadows?
+
+Number of Shadow Feelers | Frame Rate
+--- | ---
+1 | 20fps
+2 | 15fps
+3 | 13fps
+4 | 11.5fps
+5 | 10fps
+6 | 10fps
+7 | 8.5fps
+10| 7fps
+
+Clearly the number of shadow feelers negatively affects performance. 
+However, from an aesthetic point of view adding frame filtering creates the same quality soft shadows with a single feeler while maintaining a 19-20fps frame rate.
 
 -------------------------------------------------------------------------------
 TAKUAscene FORMAT:
