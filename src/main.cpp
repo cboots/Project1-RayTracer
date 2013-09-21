@@ -330,13 +330,12 @@ void keyboard(unsigned char key, int x, int y)
 		cout << "Camera Position" <<endl;
 		utilityCore::printVec3(renderCam->positions[0]);
 		break;
-	case 'r':
-		*renderCam = camDefaults;
-		cout << "Camera Reset" <<endl;
-		break;
+	//case 'r':
+	//	(*renderCam) = camDefaults;
+	//	cout << "Camera Reset" <<endl;
+	//	break;
 	case 'A':
 		renderOpts->antialiasing = !renderOpts->antialiasing;
-		
 		cout << "Antialiasing: " << renderOpts->antialiasing<< endl;
 		break;
 	case 'S':
