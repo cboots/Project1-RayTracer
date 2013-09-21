@@ -6,6 +6,13 @@ Fall 2013
 Submitted 9/20/2013
 -------------------------------------------------------------------------------
 ![This scene contains elements of every feature implemented](/renders/refractionwithmirrors.0.bmp "Hall of Mirrors")
+
+Youtube Video of Rendering:
+<dl>
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=RdW1kkUx1jg
+" target="_blank"><img src="http://img.youtube.com/vi/RdW1kkUx1jg/0.jpg" 
+alt="Youtube Video of Rendering Process" width="480" height="360" border="10" /></a>
+</dl>
 -------------------------------------------------------------------------------
 NOTE:
 -------------------------------------------------------------------------------
