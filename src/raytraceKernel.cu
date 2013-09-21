@@ -77,15 +77,11 @@ __host__ __device__ int firstIntersect(staticGeom* geoms, int numberOfGeoms, ray
 	return firstGeomInd;
 }
 
-__host__ __device__ glm::vec3 reflect(glm::vec3 incident, glm::vec3 normal)
-{
-	return incident-glm::dot(2.0f*normal, incident) * normal;
-}
 
 ///Compute the scalar contribution from specular highlights
 __host__ __device__ float calculateSpecularScalar(ray viewRay, ray lightDirection, glm::vec3 normal, float specularExponent)
 {
-	float dot = glm::dot(reflect(-lightDirection.direction, normal), -viewRay.direction);
+	float dot = glm::dot(calculateReflectionDirection(normal, -lightDirection.direction), -viewRay.direction);
 	if(dot <= 0.0)
 		return 0.0;
 	else
@@ -242,7 +238,7 @@ __host__ __device__ glm::vec3 traceRay(ray primeRay, float seed, renderOptions r
 	glm::vec3 intersectionPoint;
 	glm::vec3 normal;
 	int ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
-	
+
 	if(ind >= 0)
 	{
 		//We have something to draw. 
@@ -258,25 +254,36 @@ __host__ __device__ glm::vec3 traceRay(ray primeRay, float seed, renderOptions r
 		case RAYTRACE:
 		case ALIASING_DEBUG:
 		case SHADOW_DEBUG:
-
-			for(int i = 1; i < rconfig.traceDepth; ++i){
+			float IOR = 1.0;//Initially air
+			int ind1 = -1;
+			for(int i = 1; i < rconfig.traceDepth && ind >= 0; ++i){
 				if(mats[geoms[ind].materialid].hasReflective){
 					//reflect ray
-					primeRay.direction = reflect(primeRay.direction, normal);
+					primeRay.direction = calculateReflectionDirection(normal, primeRay.direction);
 					primeRay.origin = intersectionPoint;
 					color *= mats[geoms[ind].materialid].color;
+					ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
 				}else if(mats[geoms[ind].materialid].hasRefractive)
 				{
 					//refract ray
+					if(ind1 >= 0){
+						//inside material leaving.
+						primeRay.direction = calculateTransmissionDirection(normal, primeRay.direction, IOR, 1.0f); 
+						IOR = 1.0f;
+					}else{
+						primeRay.direction = calculateTransmissionDirection(normal, primeRay.direction, IOR, mats[geoms[ind].materialid].indexOfRefraction); 
+						IOR = mats[geoms[ind].materialid].indexOfRefraction;
+					}
 
-				}else{
+					primeRay.origin = intersectionPoint;
 
-					break;
+					//Compute transmission distance
+					ind1 = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
+
+					//Subtract out absorbtion
+					color *= calculateTransmission(mats[geoms[ind].materialid].absorptionCoefficient, dist);
+					ind = ind1;
 				}
-
-				ind = firstIntersect(geoms, numberOfGeoms, primeRay, intersectionPoint, normal, dist);
-				if(ind < 0)
-					break;
 			}
 			if(ind >= 0){
 				color *= calculatePhongIllumination(primeRay, intersectionPoint, ind, normal, rconfig, seed, 
