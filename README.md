@@ -69,11 +69,45 @@ Interactive Controls
 -------------------------------------------------------------------------------
 The engine was designed so that many features could modified at runtime to allow easy exploration of the effects of various parameters. In addition, several debug modes were implemented that graphically display additional information about the scene. These options to result in more complex kernels that have a negative impact on performance. I preferred the flexibility to quickly experiment for this project, but in the path tracer I will be redesigning the kernel structure from the ground up with performance in mind.
 
-Here's a complete list of the keypress commands you can use at runtime.
+Here is a complete list of the keypress commands you can use at runtime.
+
+Keypress | Function
+--- | ---
+A | Toggles Anti-Aliasing
+S | Toggles soft shadows
+x | Toggles adaptive shadows
+F | Toggles Frame Filtering
+f | Clears frame filter
+] | Increase number of soft shadow rays
+[ | Decrease number of soft shadow rays
+= | Increase trace depth
+- | Decrease trace depth
+w/a/s/d | Move Camera Forward/Left/Back/Right
+ESC | Exit
+1 | Raytracing Render Mode
+2 | Distance Debug Mode
+3 | Normals Debug Mode
+4 | Anti-aliasing Mode
+5 | Shadow Debug Mode
 
 
-* A brief description of the project and the specific features you implemented.
-* At least one screenshot of your project running.
+-------------------------------------------------------------------------------
+Debug Modes
+-------------------------------------------------------------------------------
+Distance debug mode casts rays and shades the distance to the first intersected surface in greyscale.
+![Debug Mode](/screenshots/distance_debug.bmp "Distance Debug Mode")
+
+Normal debug mode colors the normals of the first impacted surface for each ray. Pure RGB colors are axis aligned.
+(i.e. Red pixels have normals along the x-axis)
+![Debug Mode](/screenshots/normal_debug.bmp "Normal Debug Mode")
+
+Shadow Debug Mode shows the pure light available at each pixel. There are some bugs here that have not been resolved, but still interesting.
+![Debug Mode](/screenshots/shadow_debug.bmp "Shadow Debug Mode")
+
+Aliasing Debug Mode highlights in green areas that are being adaptively oversampled.
+![Debug Mode](/screenshots/aliasing_debug.PNG "Aliasing Debug Mode")
+
+
 * A 30 second or longer video of your project running.  To create the video you
   can use http://www.microsoft.com/expression/products/Encoder4_Overview.aspx 
 * A performance evaluation (described in detail below).
