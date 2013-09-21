@@ -316,6 +316,20 @@ void keyboard(unsigned char key, int x, int y)
 		cout << "Camera Position" <<endl;
 		utilityCore::printVec3(renderCam->positions[0]);
 		break;
+	case 'a':
+		//walk left along view
+		camMoveRight(renderCam, 0.25f);
+		frameFilterCounter = 0;
+		cout << "Camera Position" <<endl;
+		utilityCore::printVec3(renderCam->positions[0]);
+		break;
+	case 'd':
+		//walk right along view
+		camMoveRight(renderCam, -0.25f);
+		frameFilterCounter = 0;
+		cout << "Camera Position" <<endl;
+		utilityCore::printVec3(renderCam->positions[0]);
+		break;
 	case 'r':
 		*renderCam = camDefaults;
 		cout << "Camera Reset" <<endl;
