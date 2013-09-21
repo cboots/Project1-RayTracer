@@ -74,7 +74,7 @@ int main(int argc, char** argv){
 	//TODO: Set up rendering options
 	renderOpts = new renderOptions();
 	renderOpts->mode = RAYTRACE;
-	renderOpts->traceDepth = 2;
+	renderOpts->traceDepth = 20;
 	renderOpts->distanceShadeRange = 20.0f;
 
 	//Note, these constants must sum to 1.
