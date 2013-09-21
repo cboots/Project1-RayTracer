@@ -84,17 +84,17 @@ int main(int argc, char** argv){
 	renderOpts->ambientLight = glm::vec3(1,1,1);
 
 	//Rendering toggle options
-	renderOpts->antialiasing = true;
+	renderOpts->antialiasing = false;
 	renderOpts->maxSamplesPerPixel = 9;
 	renderOpts->minSamplesPerPixel = 1;
 	renderOpts->aargbThresholds = glm::vec3(0.01,0.01,0.01);
 
-	renderOpts->softShadows= true;
-	renderOpts->adaptiveShadows = true;
+	renderOpts->softShadows= false;
+	renderOpts->adaptiveShadows = false;
 	renderOpts->parallelShadows = false;
 	renderOpts->numShadowRays = 1;
 
-	renderOpts->frameFiltering = true;
+	renderOpts->frameFiltering = false;
 
 	if(targetFrame>=renderCam->frames){
 		cout << "Warning: Specified target frame is out of range, defaulting to frame 0." << endl;
@@ -361,7 +361,7 @@ void keyboard(unsigned char key, int x, int y)
 		cout << "Num Shadow Rays: " << renderOpts->numShadowRays << endl;
 		break;
 	case '[':
-		if(renderOpts->traceDepth > 1)
+		if(renderOpts->numShadowRays > 1)
 			renderOpts->numShadowRays--;
 		cout << "Num Shadow Rays: " << renderOpts->numShadowRays << endl;
 		break;
