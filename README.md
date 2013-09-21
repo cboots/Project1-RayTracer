@@ -115,10 +115,30 @@ Aliasing Debug Mode highlights in green areas that are being adaptively oversamp
 ![Debug Mode](/screenshots/aliasing_debug.PNG "Aliasing Debug Mode")
 
 
-* A 30 second or longer video of your project running.  To create the video you
-  can use http://www.microsoft.com/expression/products/Encoder4_Overview.aspx 
-* A performance evaluation (described in detail below).
+-------------------------------------------------------------------------------
+Additional Screenshots
+-------------------------------------------------------------------------------
+![Screenshot](/renders/framefiltered.0.bmp "Example Scene with Frame Filtering")
 
+![Screenshot](/renders/hallofmirrors.0.bmp "Hall of mirrors")
+
+![Screenshot](/renders/hallofmirrorsdeep.0.bmp "Hall of mirrors deep trace")
+
+![Screenshot](/renders/multisource.0.bmp "Multiple light sources, hard shadows")
+
+![Screenshot](/renders/combined.0.bmp "Multiple light sources, soft shadows")
+
+![Screenshot](/renders/combined.1.bmp "Multiple light sources, soft shadows")
+
+
+-------------------------------------------------------------------------------
+Blooper Reel
+-------------------------------------------------------------------------------
+Some floating point errors I encountered while implementing shadows.
+![Screenshot](/renders/badshadow.0.bmp "Floating Point Errors")
+
+Strange Refraction Artifact
+![Screenshot](/renders/refraction.0.bmp "Refraction errors")
 
 
 
