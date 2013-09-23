@@ -161,7 +161,7 @@ EMITTANCE   0
 CAMERA
 RES         800 800
 FOVY        25
-ITERATIONS  200
+ITERATIONS  5000
 FILE        refractionwithmirrors.bmp
 frame 0
 EYE         0 4.5 4.9
@@ -252,7 +252,7 @@ SCALE       1 1 1
 
 OBJECT 10
 cube
-material 11
+material 12
 frame 0
 TRANS       0 5 5
 ROTAT       0 90 0

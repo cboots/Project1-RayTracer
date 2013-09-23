@@ -49,6 +49,8 @@ __host__ __device__ int firstIntersect(staticGeom* geoms, int numberOfGeoms, ray
 	int firstGeomInd = -1;
 	distance = -1;
 	//Best intersection points stored in output params as minimums encountered. Limits temporary variables..
+	r.origin += r.direction*RAY_BIAS_AMOUNT;//March along ray a tiny bit to fix floating point errors
+
 
 	//for each geometry object
 	//TODO create better scene graph to improve collision detection for more complicated scenes. (Octtree)
@@ -60,8 +62,7 @@ __host__ __device__ int firstIntersect(staticGeom* geoms, int numberOfGeoms, ray
 
 		//Test for collision
 		float dist = geomIntersectionTest(geoms[i], r, intersectionPointTemp, normalTemp);
-		if(dist > RAY_BIAS_AMOUNT)//Exclude very very near hits. This should help fix floating point errors.
-		{
+		if(dist > 0){
 			//Impact detected
 			if(distance < 0 || dist < distance)
 			{
