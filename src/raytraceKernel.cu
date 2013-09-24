@@ -269,10 +269,10 @@ __host__ __device__ glm::vec3 traceRay(ray primeRay, float seed, renderOptions r
 					//refract ray
 					if(ind1 >= 0){
 						//inside material leaving.
-						primeRay.direction = calculateTransmissionDirection(normal, primeRay.direction, IOR, 1.0f); 
+						primeRay.direction = calculateTransmissionDirection(-normal, -primeRay.direction, IOR, 1.0f); 
 						IOR = 1.0f;
 					}else{
-						primeRay.direction = calculateTransmissionDirection(normal, primeRay.direction, IOR, mats[geoms[ind].materialid].indexOfRefraction); 
+						primeRay.direction = calculateTransmissionDirection(normal, -primeRay.direction, IOR, mats[geoms[ind].materialid].indexOfRefraction); 
 						IOR = mats[geoms[ind].materialid].indexOfRefraction;
 					}
 
