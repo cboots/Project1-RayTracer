@@ -265,5 +265,5 @@ material 5
 frame 0
 TRANS       0 5 -1
 ROTAT       0 80 10
-SCALE       0.2 2 2
+SCALE       1.5 1.5 1.5
 
